@@ -1,8 +1,10 @@
 using TMPro;
+using Unity.Netcode;
 using UnityEngine;
 
-public class PlayerController : MonoBehaviour
+public class PlayerController : NetworkBehaviour
 {
+
     private TextMeshProUGUI coinText;
 
     [Header("Stats")]
@@ -23,10 +25,12 @@ public class PlayerController : MonoBehaviour
 
     void Start()
     {
+        
+
         // Buscar el objeto "CanvasPlayer" en la escena
         GameObject canvas = GameObject.Find("CanvasPlayer");
 
-        if (canvas != null)
+        //if (canvas != null)
         {
             Debug.Log("Canvas encontrado");
 
@@ -48,6 +52,7 @@ public class PlayerController : MonoBehaviour
 
     void Update()
     {
+        //if (!IsOwner) return;
         // Leer entrada del teclado
         horizontalInput = Input.GetAxis("Horizontal");
         verticalInput = Input.GetAxis("Vertical");
