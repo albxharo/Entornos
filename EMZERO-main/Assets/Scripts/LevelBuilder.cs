@@ -146,7 +146,7 @@ public class LevelBuilder : MonoBehaviour
                 tile.name = $"Tile_{x}_{z}";
 
                 CreateDecorativeItem(x, z, width, length, tilePosition);
-                CreateCoin(x, z, width, length, tilePosition);
+                //CreateCoin(x, z, width, length, tilePosition);
             }
         }
 

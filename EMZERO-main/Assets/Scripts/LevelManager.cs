@@ -120,7 +120,7 @@ public class LevelManager : MonoBehaviour
         }
 
         SpawnTeams();
-        
+
         UpdateTeamUI();
     }
 
@@ -362,7 +362,7 @@ public class LevelManager : MonoBehaviour
 
     private void SpawnTeams()
     {
-        Debug.Log("Instanciando equipos");
+        /*Debug.Log("Instanciando equipos");
         if (humanSpawnPoints.Count <= 0) { return; }
         SpawnPlayer(humanSpawnPoints[0], playerPrefab);
         Debug.Log($"Personaje jugable instanciado en {humanSpawnPoints[0]}");
@@ -381,7 +381,7 @@ public class LevelManager : MonoBehaviour
             {
                 SpawnNonPlayableCharacter(zombiePrefab, zombieSpawnPoints[i]);
             }
-        }
+        }*/
     }
 
     private void SpawnNonPlayableCharacter(GameObject prefab, Vector3 spawnPosition)
@@ -482,8 +482,19 @@ public class LevelManager : MonoBehaviour
         SceneManager.LoadScene("MenuScene"); // Cambia "MenuScene" por el nombre de tu escena principal
     }
 
-    #endregion
+    public Vector3 GetSpawnPoint(int index)
+    {
+        if (index >= 0 && index < humanSpawnPoints.Count)
+        {
+            return humanSpawnPoints[index];
+        }
 
+        Debug.LogWarning("Índice de spawn fuera de rango. Se usará el primer punto.");
+        return humanSpawnPoints[0]; // O alguna posición por defecto    }
+
+        #endregion
+
+    }
 }
 
 

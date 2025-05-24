@@ -1,7 +1,10 @@
+using System;
 using TMPro;
+using Unity.Netcode;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
-public class PlayerController : MonoBehaviour
+public class PlayerController : NetworkBehaviour
 {
     private TextMeshProUGUI coinText;
 
@@ -18,9 +21,30 @@ public class PlayerController : MonoBehaviour
     public Animator animator;              // Referencia al Animator
     public Transform cameraTransform;      // Referencia a la cámara
 
+
     private float horizontalInput;         // Entrada horizontal (A/D o flechas)
     private float verticalInput;           // Entrada vertical (W/S o flechas)
 
+
+    //------------------------
+    Transform _playerTransform;
+    Vector2 _input;
+    float _rotSpeed = 270f;
+
+    GameObject _GOlevelManager;
+
+    LevelManager _levelManager;
+
+
+    private void Awake()
+    {
+        _playerTransform = transform;
+
+        _GOlevelManager = GameObject.Find("LevelManager");
+
+
+        _levelManager = _GOlevelManager.GetComponent<LevelManager>();
+    }
     void Start()
     {
         // Buscar el objeto "CanvasPlayer" en la escena
@@ -44,10 +68,38 @@ public class PlayerController : MonoBehaviour
         }
 
         UpdateCoinUI();
+
+
     }
 
-    void Update()
+    public override void OnNetworkSpawn()
     {
+        if (IsOwner)
+        {
+            InitializeOwner() ;
+
+        }
+        if (IsServer)
+        {
+            Vector3 _spawnPos = _levelManager.GetSpawnPoint(0);
+            transform.position = _spawnPos;
+        }
+
+        Debug.Log($"Player spawned. IsOwner: {IsOwner}, IsClient: {IsClient}, IsServer: {IsServer}");
+
+
+        base.OnNetworkSpawn();
+    }
+
+    private void InitializeOwner()
+    {
+        GetComponent<PlayerInput>().enabled = true;
+    }
+
+    void FixedUpdate()
+    {
+        if (!IsServer)
+            return;
         // Leer entrada del teclado
         horizontalInput = Input.GetAxis("Horizontal");
         verticalInput = Input.GetAxis("Vertical");
@@ -58,13 +110,20 @@ public class PlayerController : MonoBehaviour
         // Manejar las animaciones del jugador
         HandleAnimations();
     }
+    public void OnMove(InputAction.CallbackContext ctx)
+    {
+        OnMoveRpc(ctx.ReadValue<Vector2>());    
+
+
+    }
+
 
     void MovePlayer()
     {
-        if (cameraTransform == null) { return; }
+        /*if (cameraTransform == null) { return; }
 
         // Calcular la dirección de movimiento en relación a la cámara
-        Vector3 moveDirection = (cameraTransform.forward * verticalInput + cameraTransform.right * horizontalInput).normalized;
+        Vector3 moveDirection = (cameraTransform.forward * _input.y + cameraTransform.right * _input.x).normalized;
         moveDirection.y = 0f; // Asegurarnos de que el movimiento es horizontal (sin componente Y)
 
         // Mover el jugador usando el Transform
@@ -78,8 +137,23 @@ public class PlayerController : MonoBehaviour
             float adjustedSpeed = isZombie ? moveSpeed * zombieSpeedModifier : moveSpeed;
 
             // Mover al jugador en la dirección deseada
-            transform.Translate(moveDirection * adjustedSpeed * Time.deltaTime, Space.World);
-        }
+            Vector3 newPosition = moveDirection * adjustedSpeed * Time.fixedDeltaTime;
+            transform.Translate(moveDirection * adjustedSpeed * Time.fixedDeltaTime, Space.World);
+            OnMoveRpc(newPosition);
+        }*/
+        _playerTransform.Translate(Vector3.forward *(_input.y * moveSpeed* Time.fixedDeltaTime));
+        _playerTransform.Rotate(Vector3.up *(_input.x * _rotSpeed * Time.fixedDeltaTime));
+
+
+    }
+
+
+    //---------
+    [Rpc(SendTo.Server)]
+    void OnMoveRpc(Vector2 input)
+    {
+
+        _input = input;
     }
 
     void HandleAnimations()
@@ -104,5 +178,6 @@ public class PlayerController : MonoBehaviour
             coinText.text = $"{CoinsCollected}";
         }
     }
+
 }
 
