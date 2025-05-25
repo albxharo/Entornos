@@ -69,6 +69,7 @@ public class LevelManager : MonoBehaviour
 
         // Obtener la referencia al LevelBuilder
         levelBuilder = GetComponent<LevelBuilder>();
+        Debug.Log($"[LevelManager] humanSpawnPoints.Count = {humanSpawnPoints.Count}");
 
         Time.timeScale = 1f; // Asegurarse de que el tiempo no esté detenido
     }
@@ -416,6 +417,8 @@ public class LevelManager : MonoBehaviour
     #endregion
 
     #region Modo de juego
+
+ 
 
     private void HandleTimeLimitedGameMode()
     {

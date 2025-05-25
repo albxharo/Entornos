@@ -65,6 +65,7 @@ public class LevelBuilder : MonoBehaviour
     {
         GameObject parentObject = new GameObject("RoomsParent");
         roomParent = parentObject.transform;
+        Build();
     }
 
     #endregion
