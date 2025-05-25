@@ -495,6 +495,13 @@ public class LevelManager : MonoBehaviour
         #endregion
 
     }
+    /// <summary>
+    /// Número total de spawn points humanos.
+    /// </summary>
+    public int GetSpawnPointCount()
+    {
+        return humanSpawnPoints.Count;
+    }
 }
 
 

@@ -74,21 +74,30 @@ public class PlayerController : NetworkBehaviour
 
     public override void OnNetworkSpawn()
     {
+        base.OnNetworkSpawn();
+
         if (IsOwner)
         {
-            InitializeOwner() ;
+            InitializeOwner();
+            // Calcula el índice basado en el clientId y el total de spawn points:
+            int totalSpawns = _levelManager.GetSpawnPointCount();
+            int spawnIndex = (int)NetworkManager.Singleton.LocalClientId % totalSpawns;
 
+            // Pide al servidor que te coloque en el spawn correspondiente:
+            SpawnOnServerRpc(spawnIndex);
         }
-        if (IsServer)
-        {
-            Vector3 _spawnPos = _levelManager.GetSpawnPoint(0);
-            transform.position = _spawnPos;
-        }
+    }
 
-        Debug.Log($"Player spawned. IsOwner: {IsOwner}, IsClient: {IsClient}, IsServer: {IsServer}");
+    [ServerRpc]
+    private void SpawnOnServerRpc(int spawnIndex, ServerRpcParams rpcParams = default)
+    {
+        // Asegúrate de que el índice es válido:
+        int totalSpawns = _levelManager.GetSpawnPointCount();
+        spawnIndex = Mathf.Clamp(spawnIndex, 0, totalSpawns - 1);
 
-
-        base.OnNetworkSpawn();
+        // Obtenemos la posición y la aplicamos:
+        Vector3 pos = _levelManager.GetSpawnPoint(spawnIndex);
+        transform.position = pos;
     }
 
     private void InitializeOwner()
