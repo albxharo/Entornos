@@ -4,21 +4,23 @@ using System.Collections.Generic;
 using Unity.Netcode;
 using UnityEngine;
 
-
 public class GameManager : NetworkBehaviour
 {
-    // Start is called before the first frame update
     int numHumans;
     int numZombies;
 
     public GameObject humanoPrefab;
     public GameObject zombiePrefab;
 
-    NetworkList<ulong> humanList = new NetworkList<ulong>();
-    NetworkList<ulong> zombieList = new NetworkList<ulong>();
+    private NetworkList<ulong> humanList = new NetworkList<ulong>();
+    private NetworkList<ulong> zombieList = new NetworkList<ulong>();
 
-    GameObject _GOlevelManager;
-    LevelManager _levelManager;
+    private List<ulong> jugadoresPendientes = new List<ulong>();
+    private bool partidaIniciada = false;
+
+    private GameObject _GOlevelManager;
+    private LevelManager _levelManager;
+
     private void Awake()
     {
         _GOlevelManager = GameObject.Find("LevelManager");
@@ -43,70 +45,90 @@ public class GameManager : NetworkBehaviour
             NetworkManager.OnClientConnectedCallback += OnClientConnected;
         }
     }
+
+    private void ApproveConnection(NetworkManager.ConnectionApprovalRequest request, NetworkManager.ConnectionApprovalResponse response)
+    {
+        bool hayHueco = humanList.Count < numHumans || zombieList.Count < numZombies;
+
+        response.Approved = hayHueco;
+        response.CreatePlayerObject = false;
+        response.Pending = false;
+
+        if (!hayHueco)
+        {
+            Debug.Log("Conexión rechazada: equipos completos.");
+        }
+    }
+
     private void OnClientConnected(ulong clientId)
     {
-        if (!IsServer) return;
+        if (!IsServer || partidaIniciada)
+            return;
 
         string equipo = AsignarEquipo(clientId);
 
         if (equipo == "ninguno")
         {
             Debug.Log($"Jugador {clientId} rechazado: equipos llenos");
+            NetworkManager.Singleton.DisconnectClient(clientId);
             return;
         }
 
-        GameObject prefab = equipo == "zombie" ? zombiePrefab : humanoPrefab;
+        Debug.Log($"Jugador {clientId} asignado a {equipo}, esperando inicio de partida");
 
-        GameObject player = Instantiate(prefab, GetSpawnPoint(equipo), Quaternion.identity);
-        player.GetComponent<NetworkObject>().SpawnAsPlayerObject(clientId);
+        jugadoresPendientes.Add(clientId);
 
-        Debug.Log($"Jugador {clientId} spawneado como {equipo}");
-
-        EnviarEquipoClientRpc(equipo, new ClientRpcParams
+        if (humanList.Count == numHumans && zombieList.Count == numZombies)
         {
-            Send = new ClientRpcSendParams { TargetClientIds = new[] { clientId } }
-        });
-
-        if (equipo == "ninguno")
-        {
-            Debug.Log($"Jugador {clientId} rechazado: equipos llenos");
-
-            NetworkManager.Singleton.DisconnectClient(clientId); // 👈 Desconecta al jugador
-            return;
+            IniciarPartida();
         }
     }
-    private void ApproveConnection(NetworkManager.ConnectionApprovalRequest request, NetworkManager.ConnectionApprovalResponse response)
+
+    private void IniciarPartida()
     {
-        // Verificar si hay hueco en los equipos
-        bool hayHueco = humanList.Count < numHumans || zombieList.Count < numZombies;
+        partidaIniciada = true;
+        Debug.Log("Todos los jugadores listos. Iniciando partida...");
 
-        response.Approved = hayHueco;
-        response.CreatePlayerObject = false; // Porque hacemos spawn manual luego
-        response.Pending = false;
-
-        if (!hayHueco)
+        foreach (ulong clientId in jugadoresPendientes)
         {
-            Debug.Log("Un cliente fue rechazado porque los equipos están completos.");
+            string equipo = humanList.Contains(clientId) ? "human" : "zombie";
+
+            GameObject prefab = equipo == "zombie" ? zombiePrefab : humanoPrefab;
+            GameObject player = Instantiate(prefab, GetSpawnPoint(equipo), Quaternion.identity);
+            player.GetComponent<NetworkObject>().SpawnAsPlayerObject(clientId);
+
+            Debug.Log($"Jugador {clientId} spawneado como {equipo}");
+
+            EnviarEquipoClientRpc(equipo, new ClientRpcParams
+            {
+                Send = new ClientRpcSendParams { TargetClientIds = new[] { clientId } }
+            });
         }
+
+        jugadoresPendientes.Clear();
     }
+
     private string AsignarEquipo(ulong clientId)
     {
-        if(humanList.Count >= numHumans && zombieList.Count >= numZombies)
+        if (humanList.Count >= numHumans && zombieList.Count >= numZombies)
         {
-            Debug.Log("Equipos Completados");
+            Debug.Log("Equipos completados");
             return "ninguno";
         }
-        if(humanList.Count >= numHumans)
+
+        if (humanList.Count >= numHumans)
         {
             zombieList.Add(clientId);
             return "zombie";
         }
+
         if (zombieList.Count >= numZombies)
         {
             humanList.Add(clientId);
             return "human";
         }
-        if(UnityEngine.Random.value < 0.5f)
+
+        if (UnityEngine.Random.value < 0.5f)
         {
             humanList.Add(clientId);
             return "human";
@@ -116,12 +138,10 @@ public class GameManager : NetworkBehaviour
             zombieList.Add(clientId);
             return "zombie";
         }
-
     }
 
     private Vector3 GetSpawnPoint(string equipo)
     {
-        // Cambia esto según cómo gestiones los puntos de spawn
         return _levelManager.GetSpawnPoint(0);
     }
 
@@ -129,11 +149,8 @@ public class GameManager : NetworkBehaviour
     private void EnviarEquipoClientRpc(string equipo, ClientRpcParams rpcParams = default)
     {
         Debug.Log($"Me han asignado al equipo: {equipo}");
-
-        // Aquí puedes guardar el equipo local, activar modelos, UI, etc.
-        // Por ejemplo:
-        // if (equipo == "zombie") ActivarZombie();
     }
+
     private void OnDisable()
     {
         if (IsServer)
@@ -142,5 +159,4 @@ public class GameManager : NetworkBehaviour
             NetworkManager.OnClientConnectedCallback -= OnClientConnected;
         }
     }
-
 }
