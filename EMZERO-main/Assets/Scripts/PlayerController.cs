@@ -101,8 +101,9 @@ public class PlayerController : NetworkBehaviour
         if (!IsServer)
             return;
         // Leer entrada del teclado
-        horizontalInput = Input.GetAxis("Horizontal");
-        verticalInput = Input.GetAxis("Vertical");
+        horizontalInput = _input.x;
+        verticalInput = _input.y;
+
 
         // Mover el jugador
         MovePlayer();
