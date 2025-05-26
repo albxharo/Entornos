@@ -384,7 +384,7 @@ public class LevelManager : MonoBehaviour
         }*/
     }
 
-    private void SpawnNonPlayableCharacter(GameObject prefab, Vector3 spawnPosition)
+   /* private void SpawnNonPlayableCharacter(GameObject prefab, Vector3 spawnPosition)
     {
         if (prefab != null)
         {
@@ -398,7 +398,7 @@ public class LevelManager : MonoBehaviour
             }
             Debug.Log($"Personaje no jugable instanciado en {spawnPosition}");
         }
-    }
+    }*/
 
     private void UpdateTeamUI()
     {

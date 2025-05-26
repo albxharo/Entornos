@@ -1,12 +1,19 @@
 using System.Collections.Generic;
 using UnityEngine;
+using Unity.Netcode;
+using TMPro;
 
-/// <summary>
-/// Clase para generar identificadores únicos basados en combinaciones de adjetivos, monstruos y obras.
-/// </summary>
-public class UniqueIdGenerator : MonoBehaviour
+public class UniqueIdGenerator : NetworkBehaviour
 {
-    // Listas de adjetivos, monstruos y obras
+    // NetworkVariable para sincronizar el ID a todos los clientes
+    private NetworkVariable<string> uniqueId = new NetworkVariable<string>(string.Empty,
+        NetworkVariableReadPermission.Everyone,
+        NetworkVariableWritePermission.Server);
+
+    [SerializeField] private GameObject idFloatingTextPrefab;
+    private GameObject idFloatingTextInstance;
+    private TMP_Text idTextComponent;
+
     private List<string> adjectives = new List<string>
     {
         "Terrible", "Misterioso", "Oscuro", "Poderoso", "Inmortal",
@@ -23,13 +30,47 @@ public class UniqueIdGenerator : MonoBehaviour
         "Willow", "Blade Runner", "Star Wars", "Matrix", "Jurassic Park"
     };
 
-    // HashSet para almacenar los IDs generados
+    // Almacena los IDs ya generados en esta instancia
     private HashSet<string> generatedIDs = new HashSet<string>();
 
+    public override void OnNetworkSpawn()
+    {
+        if (IsServer)
+        {
+            // Usamos GenerateUniqueID para aprovechar los 3 intentos + fallback GUID
+            string id = GenerateUniqueID();
+            uniqueId.Value = id;
+            Debug.Log($"[Server] Generated unique ID '{id}' for client {OwnerClientId}");
+        }
+
+        // Crear el texto flotante en todos los clientes
+        idFloatingTextInstance = Instantiate(idFloatingTextPrefab, transform);
+        idTextComponent = idFloatingTextInstance.GetComponentInChildren<TMP_Text>();
+        idFloatingTextInstance.transform.localPosition = new Vector3(0, 2.2f, 0);
+
+        // Registrar callback para cambios
+        uniqueId.OnValueChanged += OnIdChanged;
+
+        // Mostrar valor inicial si ya llegó antes del callback
+        if (!string.IsNullOrEmpty(uniqueId.Value))
+            OnIdChanged(string.Empty, uniqueId.Value);
+    }
+
+    private void OnDestroy()
+    {
+        uniqueId.OnValueChanged -= OnIdChanged;
+    }
+
+    private void OnIdChanged(string oldId, string newId)
+    {
+        if (idTextComponent != null)
+            idTextComponent.text = newId;
+        Debug.Log($"[Client {NetworkManager.LocalClientId}] ID changed from '{oldId}' to '{newId}'");
+    }
+
     /// <summary>
-    /// Método para generar un identificador único.
+    /// Genera un ID único usando hasta 3 combinaciones nuevas antes de recurrir a GUID.
     /// </summary>
-    /// <returns>Identificador único generado.</returns>
     public string GenerateUniqueID()
     {
         string uniqueID = null;
@@ -39,7 +80,6 @@ public class UniqueIdGenerator : MonoBehaviour
         while (attempts < 3 && !isUnique)
         {
             uniqueID = GenerateRandomID();
-
             if (!generatedIDs.Contains(uniqueID))
             {
                 isUnique = true;
@@ -52,35 +92,23 @@ public class UniqueIdGenerator : MonoBehaviour
             uniqueID = System.Guid.NewGuid().ToString();
         }
 
-        // Añadir el ID generado al HashSet
         generatedIDs.Add(uniqueID);
-
         return uniqueID;
     }
 
     /// <summary>
-    /// Método para generar un identificador aleatorio basado en combinaciones de adjetivos, monstruos y obras.
+    /// Combina aleatoriamente adjetivo, monstruo y obra, e incluye el OwnerClientId.
     /// </summary>
-    /// <returns>Identificador aleatorio generado.</returns>
     private string GenerateRandomID()
     {
         string adjective = adjectives[Random.Range(0, adjectives.Count)];
         string monster = monsters[Random.Range(0, monsters.Count)];
         string work = works[Random.Range(0, works.Count)];
-        return $"El {adjective} {monster} de {work}";
+        return $"El {adjective} {monster} de {work} (Jugador {OwnerClientId})";
     }
 
-    /// <summary>
-    /// Método para obtener la lista de IDs generados.
-    /// </summary>
-    /// <returns>Lista de IDs generados.</returns>
     public List<string> GetGeneratedIDs()
     {
         return new List<string>(generatedIDs);
     }
 }
-
-
-
-
-
