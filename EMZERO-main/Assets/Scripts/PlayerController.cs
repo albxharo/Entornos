@@ -41,8 +41,6 @@ public class PlayerController : NetworkBehaviour
         _playerTransform = transform;
 
         _GOlevelManager = GameObject.Find("LevelManager");
-
-
         _levelManager = _GOlevelManager.GetComponent<LevelManager>();
     }
     void Start()
@@ -123,7 +121,7 @@ public class PlayerController : NetworkBehaviour
         /*if (cameraTransform == null) { return; }
 
         // Calcular la dirección de movimiento en relación a la cámara
-        Vector3 moveDirection = (cameraTransform.forward * _input.y + cameraTransform.right * _input.x).normalized;
+        Vector3 moveDirection = (cameraTransform.forward * verticalinput+ cameraTransform.right * horizontalinput).normalized;
         moveDirection.y = 0f; // Asegurarnos de que el movimiento es horizontal (sin componente Y)
 
         // Mover el jugador usando el Transform

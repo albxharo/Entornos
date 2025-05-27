@@ -495,6 +495,16 @@ public class LevelManager : MonoBehaviour
         #endregion
 
     }
+
+    public int GetNumHumans()
+    {
+        return numberOfHumans;
+    }
+
+    public int GetNumZombies()
+    {
+        return numberOfZombies;
+    }
 }
 
 
