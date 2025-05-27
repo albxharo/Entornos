@@ -34,12 +34,7 @@ public class CameraSwitcher : MonoBehaviour
 
     void LateUpdate()
     {
-        if (mainCamera == null || cameraController == null)
-            return;
-
-        // Esperar hasta que la cámara tenga un jugador asignado
-        if (cameraController.player == null)
-            return;
+        if (mainCamera == null) return;
 
         if (Input.GetKeyDown(switchKey) && !isTransitioning)
         {
@@ -60,10 +55,9 @@ public class CameraSwitcher : MonoBehaviour
         {
             Debug.Log("Cambiando a cenital...");
 
-            // Apuntar directamente sobre el jugador
-            Vector3 playerPos = cameraController.player.position;
-            targetPosition = new Vector3(playerPos.x, playerPos.y + topDownHeight, playerPos.z);
-            targetRotation = Quaternion.Euler(topDownRotation, 0f, 0f);
+            // Calcula la posición y rotación para la vista cenital
+            targetPosition = mainCamera.transform.position + Vector3.up * topDownHeight;
+            targetRotation = Quaternion.Euler(topDownRotation, mainCamera.transform.eulerAngles.y, 0);
 
             // Desactiva el script CameraController
             EnableCameraController(false);
@@ -72,13 +66,9 @@ public class CameraSwitcher : MonoBehaviour
         {
             Debug.Log("Volviendo a tercera persona...");
 
-            // Recuperar la posición de tercera persona usando offset original
-            Vector3 playerPos = cameraController.player.position;
-            Quaternion rotation = Quaternion.Euler(cameraController.pitch, cameraController.yaw, 0f);
-            Vector3 offsetPos = rotation * cameraController.offset;
-
-            targetPosition = playerPos + offsetPos;
-            targetRotation = rotation;
+            // Calcula la posición y rotación para la vista de tercera persona
+            targetPosition = mainCamera.transform.position - Vector3.up * topDownHeight;
+            targetRotation = Quaternion.Euler(0, mainCamera.transform.eulerAngles.y, 0);
 
             // Reactiva el script CameraController
             EnableCameraController(true);

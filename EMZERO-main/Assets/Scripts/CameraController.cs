@@ -1,5 +1,4 @@
 using UnityEngine;
-using Unity.Netcode;
 
 public class CameraController : MonoBehaviour
 {
@@ -13,62 +12,11 @@ public class CameraController : MonoBehaviour
     public float yaw = 0f;             // Rotación alrededor del eje Y
     public float pitch = 2f;           // Inclinación hacia arriba/abajo (eje X)
 
-    private bool playerAssigned = false;
-
-    void Start()
-    {
-
-        TryAssignPlayer(); //Intentamos asignar por si ya está
-
-        //Nos suscribimos al evento por si spawnea más tarde
-        NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnected;
-
-    }
-
-    void OnDestroy()
-    {
-        if (NetworkManager.Singleton != null)
-            NetworkManager.Singleton.OnClientConnectedCallback -= OnClientConnected;
-    }
-
-    private void OnClientConnected(ulong clientId)
-    {
-        if (clientId == NetworkManager.Singleton.LocalClientId)
-        {
-            TryAssignPlayer();
-        }
-    }
-
-    void TryAssignPlayer()
-    {
-        foreach (var playerObject in FindObjectsOfType<PlayerController>())
-        {
-            if (playerObject.IsOwner)
-            {
-                player = playerObject.transform;
-                playerAssigned = true;
-                Debug.Log("? Cámara asignada al jugador local.");
-                break;
-            }
-        }
-
-        if (!playerAssigned)
-        {
-            Debug.LogWarning("?? No se encontró jugador local para seguir.");
-        }
-    }
     void LateUpdate()
     {
-        // Si aún no hemos asignado al jugador, intentar de nuevo (por si spawneó tarde)
-        if (!playerAssigned)
-        {
-            TryAssignPlayer();
-            return;
-        }
-
         if (player == null)
         {
-            Debug.LogWarning("Referencia al jugador perdida.");
+            //Debug.LogWarning("Player reference is missing.");
             return;
         }
 
