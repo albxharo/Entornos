@@ -1,24 +1,32 @@
-using UnityEngine;
+Ôªøusing UnityEngine;
+using Unity.Netcode;   // ‚Üê necesario para NetworkObject y NetworkManager
 
 public class CameraController : MonoBehaviour
 {
-    public Transform player;            // Referencia al jugador
-    public Vector3 offset = new Vector3(0f, 2f, -5f);  // Desplazamiento desde el jugador
-    public float rotationSpeed = 5f;    // Velocidad de rotaciÛn
-    public float pitchSpeed = 2f;       // Velocidad de inclinaciÛn (eje Y)
-    public float minPitch = -20f;       // ¡ngulo mÌnimo de inclinaciÛn
-    public float maxPitch = 50f;        // ¡ngulo m·ximo de inclinaciÛn
+    [Tooltip("El transform del jugador que queremos seguir")]
+    public Transform player;
+    public Vector3 offset = new Vector3(0f, 2f, -5f);
+    public float rotationSpeed = 5f;
+    public float pitchSpeed = 2f;
+    public float minPitch = -20f;
+    public float maxPitch = 50f;
 
-    public float yaw = 0f;             // RotaciÛn alrededor del eje Y
-    public float pitch = 2f;           // InclinaciÛn hacia arriba/abajo (eje X)
+    private float yaw = 0f;
+    private float pitch = 2f;
 
     void LateUpdate()
     {
-        if (player == null)
-        {
-            //Debug.LogWarning("Player reference is missing.");
-            return;
-        }
+        if (player == null) return;
+
+        // ‚Üí Solo sigo al jugador si este NetworkObject ¬°es m√≠o!
+        var netObj = player.GetComponent<NetworkObject>();
+        if (netObj == null) return;
+
+        // Opci√≥n A: con IsOwner
+        if (!netObj.IsOwner) return;
+
+        // Opci√≥n B (equivalente):    
+        // if (netObj.OwnerClientId != NetworkManager.Singleton.LocalClientId) return;
 
         HandleCameraRotation();
         UpdateCameraPosition();
@@ -26,28 +34,19 @@ public class CameraController : MonoBehaviour
 
     private void HandleCameraRotation()
     {
-        // Obtener la entrada del ratÛn para la rotaciÛn de la c·mara
         float mouseX = Input.GetAxis("Mouse X") * rotationSpeed;
         float mouseY = Input.GetAxis("Mouse Y") * pitchSpeed;
 
-        // Modificar los ·ngulos de rotaciÛn (yaw y pitch)
         yaw += mouseX;
         pitch -= mouseY;
-
-        // Limitar la inclinaciÛn de la c·mara
         pitch = Mathf.Clamp(pitch, minPitch, maxPitch);
     }
 
     private void UpdateCameraPosition()
     {
-        // Calcular la nueva direcciÛn de la c·mara
-        Quaternion rotation = Quaternion.Euler(pitch, yaw, 0f);
-        Vector3 rotatedOffset = rotation * offset;
-
-        // Posicionar la c·mara en funciÛn del jugador y el nuevo offset
-        transform.position = player.position + rotatedOffset;
-
-        // Siempre mirar al jugador
+        Quaternion rot = Quaternion.Euler(pitch, yaw, 0f);
+        Vector3 pos = player.position + rot * offset;
+        transform.position = pos;
         transform.LookAt(player);
     }
 }
