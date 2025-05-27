@@ -7,6 +7,7 @@ using UnityEngine.SceneManagement;
 
 public enum GameMode
 {
+    None,
     Tiempo,
     Monedas
 }

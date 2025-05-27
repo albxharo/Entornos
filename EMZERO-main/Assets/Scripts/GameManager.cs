@@ -21,6 +21,16 @@ public class GameManager : NetworkBehaviour
     private GameObject _GOlevelManager;
     private LevelManager _levelManager;
 
+    // Esto sincroniza el modo de juego a todos los clientes.
+    public NetworkVariable<GameMode> SelectedGameMode =
+        new NetworkVariable<GameMode>(
+             GameMode.None,
+            NetworkVariableReadPermission.Everyone,
+            NetworkVariableWritePermission.Server
+        );
+
+    private bool gameModeChosen = false;
+
     private void Awake()
     {
         _GOlevelManager = GameObject.Find("LevelManager");
@@ -43,6 +53,15 @@ public class GameManager : NetworkBehaviour
         {
             NetworkManager.ConnectionApprovalCallback += ApproveConnection;
             NetworkManager.OnClientConnectedCallback += OnClientConnected;
+
+            // Suscribimos un listener para cuando el servidor cambie el modo
+            SelectedGameMode.OnValueChanged += (oldMode, newMode) =>
+            {
+                gameModeChosen = true;
+                Debug.Log($"Modo de juego seleccionado: {newMode}");
+                TryStartMatchIfReady();
+
+            };
         }
     }
 
@@ -78,12 +97,32 @@ public class GameManager : NetworkBehaviour
 
         jugadoresPendientes.Add(clientId);
 
-        if (humanList.Count == numHumans && zombieList.Count == numZombies)
+        // Tras asignar equipos, intentamos arrancar
+        TryStartMatchIfReady();
+    }
+
+    private void TryStartMatchIfReady()
+    {
+        // Sólo lanzar IniciarPartida cuando
+        //  1) Teams completos, y
+        //  2) El Host YA ha elegido modo
+        if (gameModeChosen
+            && humanList.Count == numHumans
+            && zombieList.Count == numZombies
+            && !partidaIniciada)
         {
             IniciarPartida();
         }
     }
 
+    // ServerRpc público para que el Host lo invoque al elegir en UI
+    [ServerRpc(RequireOwnership = false)]
+    public void SelectGameModeServerRpc(GameMode mode)
+    {
+        SelectedGameMode.Value = mode;
+        // No llamamos aquí directamente a IniciarPartida: 
+        // lo hará TryStartMatchIfReady si ya están todos conectados.
+    }
     private void IniciarPartida()
     {
         partidaIniciada = true;
