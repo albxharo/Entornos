@@ -1,9 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.UI;
+using UnityEngine.Networking;
+using Unity.Netcode;
 
 public enum GameMode
 {
@@ -12,7 +16,8 @@ public enum GameMode
     Monedas
 }
 
-public class LevelManager : MonoBehaviour
+
+public class LevelManager : NetworkBehaviour
 {
     #region Properties
 
@@ -36,6 +41,9 @@ public class LevelManager : MonoBehaviour
 
     private List<Vector3> humanSpawnPoints = new List<Vector3>();
     private List<Vector3> zombieSpawnPoints = new List<Vector3>();
+
+    [SerializeField] private GameObject panelNumJugadores;
+    [SerializeField] private TMP_InputField inputFieldNumJugadores;
 
     // Referencias a los elementos de texto en el canvas
     private TextMeshProUGUI humansText;
@@ -62,6 +70,15 @@ public class LevelManager : MonoBehaviour
     private bool partidaIniciada = false;
     public GameObject gameOverPanel; // Asigna el panel desde el inspector
 
+    public GameObject GO_gameManager;
+    private GameManager gameManager;
+
+    public NetworkVariable<int> numJugadores = new NetworkVariable<int>(
+             0,
+            NetworkVariableReadPermission.Everyone,
+            NetworkVariableWritePermission.Server
+        );
+
     #endregion
 
     #region Unity game loop methods
@@ -75,6 +92,8 @@ public class LevelManager : MonoBehaviour
 
         // Obtener la referencia al LevelBuilder
         levelBuilder = GetComponent<LevelBuilder>();
+
+        gameManager = GO_gameManager.GetComponent<GameManager>();
 
         Time.timeScale = 1f; // Asegurarse de que el tiempo no esté detenido
     }
@@ -490,6 +509,32 @@ public class LevelManager : MonoBehaviour
             Cursor.visible = true; // Hace visible el cursor
         }
     }
+    public void SetNumPlayers()
+    {
+        Debug.Log("Recibido el input field");
+        if (IsHost)
+        {
+            string texto = inputFieldNumJugadores.text;
+
+
+            if (int.TryParse(texto, out int numero))
+            {
+                SetNumPlayersRpc(numero);
+
+
+                panelNumJugadores.SetActive(false);
+            }
+            else
+            {
+                Debug.LogWarning("Entrada inválida. Asegúrate de introducir un número.");
+            }
+        }
+    }
+
+    private void SetNumPlayersRpc(int numero)
+    {
+        numJugadores.Value = numero;
+    }
 
     public void ReturnToMainMenu()
     {
@@ -501,7 +546,7 @@ public class LevelManager : MonoBehaviour
         SceneManager.LoadScene("MenuScene"); // Cambia "MenuScene" por el nombre de tu escena principal
     }
 
-    public Vector3 GetSpawnPoint(int index)
+    public Vector3 GetHumanSpawnPoint(int index)
     {
         if (index >= 0 && index < humanSpawnPoints.Count)
         {
@@ -511,19 +556,34 @@ public class LevelManager : MonoBehaviour
         Debug.LogWarning("Índice de spawn fuera de rango. Se usará el primer punto.");
         return humanSpawnPoints[0]; // O alguna posición por defecto    }
 
-        #endregion
+
+    }
+
+    public Vector3 GetZombieSpawnPoint(int index)
+    {
+        if (index >= 0 && index < zombieSpawnPoints.Count)
+        {
+            return zombieSpawnPoints[index];
+        }
+
+        Debug.LogWarning("Índice de spawn fuera de rango. Se usará el primer punto.");
+        return zombieSpawnPoints[0]; // O alguna posición por defecto    }
+
+#endregion
 
     }
 
     public int GetNumHumans()
     {
-        return numberOfHumans;
+        return numJugadores.Value;
     }
 
     public int GetNumZombies()
     {
-        return numberOfZombies;
+        return numJugadores.Value;
     }
+
+
 
     // Exponer para el RPC
     public void StartGame(GameMode mode)
@@ -551,6 +611,16 @@ public class LevelManager : MonoBehaviour
             coinLabelText.gameObject.SetActive(true);
             coinValueText.gameObject.SetActive(true);
         }
+    }
+
+    public override void OnNetworkSpawn()
+    {
+        panelNumJugadores.SetActive(IsHost);
+        numJugadores.OnValueChanged += (oldNumber, newNumber) =>
+        {
+            gameManager.OnNumPlayersChange(newNumber);
+
+        };
     }
 
 }

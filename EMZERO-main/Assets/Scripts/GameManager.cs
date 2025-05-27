@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using TMPro;
 using Unity.Netcode;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class GameManager : NetworkBehaviour
 {
@@ -15,11 +17,27 @@ public class GameManager : NetworkBehaviour
     private NetworkList<ulong> humanList = new NetworkList<ulong>();
     private NetworkList<ulong> zombieList = new NetworkList<ulong>();
 
+    private NetworkList<ulong> readyPlayersList = new NetworkList<ulong>();
+
+
     private List<ulong> jugadoresPendientes = new List<ulong>();
     private bool partidaIniciada = false;
 
     private GameObject _GOlevelManager;
     private LevelManager _levelManager;
+
+    private GameObject canvas;
+    public GameObject readycanvas;
+
+    public NetworkVariable<int> lastTypePlayer =
+        new NetworkVariable<int>(
+             1,
+            NetworkVariableReadPermission.Everyone,
+            NetworkVariableWritePermission.Server
+        );
+
+    [SerializeField] private TMP_InputField inputFieldNumJugadores;
+
 
     // Esto sincroniza el modo de juego a todos los clientes.
     public NetworkVariable<GameMode> SelectedGameMode =
@@ -36,8 +54,18 @@ public class GameManager : NetworkBehaviour
         _GOlevelManager = GameObject.Find("LevelManager");
         _levelManager = _GOlevelManager.GetComponent<LevelManager>();
 
+        canvas = GameObject.Find("CanvasPlayer");
+
+        //panelReady = canvas.transform.Find("Panelready");
+
         numHumans = _levelManager.GetNumHumans();
         numZombies = _levelManager.GetNumZombies();
+    }
+
+    public void OnNumPlayersChange(int numero)
+    {
+        numHumans = numero;
+        numZombies = numero;
     }
 
     public override void OnDestroy()
@@ -45,13 +73,14 @@ public class GameManager : NetworkBehaviour
         base.OnDestroy();
         humanList.Dispose();
         zombieList.Dispose();
+        readyPlayersList.Dispose();
     }
 
     public override void OnNetworkSpawn()
     {
         if (IsServer)
         {
-            NetworkManager.ConnectionApprovalCallback += ApproveConnection;
+            //NetworkManager.ConnectionApprovalCallback += ApproveConnection;
             NetworkManager.OnClientConnectedCallback += OnClientConnected;
 
             // Suscribimos un listener para cuando el servidor cambie el modo
@@ -62,6 +91,8 @@ public class GameManager : NetworkBehaviour
                 TryStartMatchIfReady();
 
             };
+
+            //////////////////////////
         }
     }
 
@@ -88,9 +119,20 @@ public class GameManager : NetworkBehaviour
 
         if (equipo == "ninguno")
         {
-            Debug.Log($"Jugador {clientId} rechazado: equipos llenos");
-            NetworkManager.Singleton.DisconnectClient(clientId);
-            return;
+            if(lastTypePlayer.Value == 0)
+            {
+                Debug.Log("Ultimo fue: zombie");
+                lastTypePlayer.Value = 1;
+                equipo = "human";
+            }
+            else
+            {
+                equipo = "zombie";
+                lastTypePlayer.Value = 0;
+
+                Debug.Log("Ultimo fue: humano");
+
+            }
         }
 
         Debug.Log($"Jugador {clientId} asignado a {equipo}, esperando inicio de partida");
@@ -107,8 +149,7 @@ public class GameManager : NetworkBehaviour
         //  1) Teams completos, y
         //  2) El Host YA ha elegido modo
         if (gameModeChosen
-            && humanList.Count == numHumans
-            && zombieList.Count == numZombies
+            && readyPlayersList.Count > ((humanList.Count + zombieList.Count) / 2)
             && !partidaIniciada)
         {
             IniciarPartida();
@@ -128,12 +169,13 @@ public class GameManager : NetworkBehaviour
         partidaIniciada = true;
         Debug.Log("Todos los jugadores listos. Iniciando partida...");
 
+
         foreach (ulong clientId in jugadoresPendientes)
         {
             string equipo = humanList.Contains(clientId) ? "human" : "zombie";
 
             GameObject prefab = equipo == "zombie" ? zombiePrefab : humanoPrefab;
-            GameObject player = Instantiate(prefab, GetSpawnPoint(equipo), Quaternion.identity);
+            GameObject player = Instantiate(prefab, GetSpawnPoint(equipo, clientId), Quaternion.identity);
             player.GetComponent<NetworkObject>().SpawnAsPlayerObject(clientId);
 
             Debug.Log($"Jugador {clientId} spawneado como {equipo}");
@@ -162,6 +204,13 @@ public class GameManager : NetworkBehaviour
     {
         if (humanList.Count >= numHumans && zombieList.Count >= numZombies)
         {
+            if(humanList.Count == numHumans && zombieList.Count == numZombies)
+            {
+                Debug.Log("Equipos recién completados");
+                lastTypePlayer.Value = 1; //para que si o si el siguiente sea zombie
+                return "ninguno";
+
+            }
             Debug.Log("Equipos completados");
             return "ninguno";
         }
@@ -169,30 +218,49 @@ public class GameManager : NetworkBehaviour
         if (humanList.Count >= numHumans)
         {
             zombieList.Add(clientId);
+            lastTypePlayer.Value = 0;
             return "zombie";
         }
 
         if (zombieList.Count >= numZombies)
         {
             humanList.Add(clientId);
+            lastTypePlayer.Value = 1;
+
             return "human";
         }
 
         if (UnityEngine.Random.value < 0.5f)
         {
             humanList.Add(clientId);
+            lastTypePlayer.Value = 1;
+
             return "human";
         }
         else
         {
             zombieList.Add(clientId);
+            lastTypePlayer.Value = 0;
+
             return "zombie";
         }
     }
 
-    private Vector3 GetSpawnPoint(string equipo)
+    private Vector3 GetSpawnPoint(string equipo, ulong clientId)
     {
-        return _levelManager.GetSpawnPoint(0);
+        int index = 0;
+
+        if(equipo == "zombie")
+        {
+            index = zombieList.IndexOf(clientId);
+            return _levelManager.GetZombieSpawnPoint(index);
+        }
+        else
+        {
+            index = humanList.IndexOf(clientId);
+            return _levelManager.GetHumanSpawnPoint(index);
+
+        }
     }
 
     [ClientRpc]
@@ -208,5 +276,23 @@ public class GameManager : NetworkBehaviour
             NetworkManager.ConnectionApprovalCallback -= ApproveConnection;
             NetworkManager.OnClientConnectedCallback -= OnClientConnected;
         }
+    }
+
+    public void readyButtonPressed()
+    {
+
+        
+            readyButtonpressedServerRpc(OwnerClientId);
+            readycanvas.SetActive(false);
+        
+    }
+
+    [ServerRpc(RequireOwnership = false)]
+    public void readyButtonpressedServerRpc(ulong clientId)
+    {
+             readyPlayersList.Add(clientId);
+            Debug.Log($"[Server] Jugador {clientId} está listo.");
+            TryStartMatchIfReady();
+        
     }
 }
