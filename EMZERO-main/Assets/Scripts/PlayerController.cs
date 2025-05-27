@@ -68,7 +68,8 @@ public class PlayerController : NetworkBehaviour
 
         if (IsServer)
         {
-            transform.position = _levelManager.GetSpawnPoint(0);
+            //transform.position = _levelManager.GetSpawnPoint(0);
+
         }
 
         Debug.Log($"Player spawned. IsOwner: {IsOwner}, IsServer: {IsServer}");

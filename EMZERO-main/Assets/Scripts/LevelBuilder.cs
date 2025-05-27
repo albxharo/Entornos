@@ -3,7 +3,8 @@ using System.Linq;
 using UnityEngine;
 
 /// <summary>
-/// Clase para generar el nivel del juego, incluyendo suelos, paredes, ítems decorativos, monedas y el borde exterior.
+/// Clase para generar el nivel del juego, incluyendo suelos, paredes, ítems decorativos y el borde exterior.
+/// Las monedas se generan por separado llamando a SpawnCoins().
 /// </summary>
 public class LevelBuilder : MonoBehaviour
 {
@@ -12,41 +13,30 @@ public class LevelBuilder : MonoBehaviour
     [Header("Prefabs")]
     [Tooltip("Array con los prefabs de suelo")]
     [SerializeField] private GameObject[] floorPrefabs;
-
     [Tooltip("Array con los prefabs de ítems decorativos")]
     [SerializeField] private GameObject[] obstaclesPrefabs;
-
     [Tooltip("Prefab para las esquinas")]
     [SerializeField] private GameObject cornerPrefab;
-
     [Tooltip("Prefab para los muros")]
     [SerializeField] private GameObject wallPrefab;
-
     [Tooltip("Prefab para las puertas")]
     [SerializeField] private GameObject doorPrefab;
-
     [Tooltip("Prefab para el trozo de muro que incluye puerta")]
     [SerializeField] private GameObject doorHolePrefab;
-
     [Tooltip("Prefab para el borde exterior")]
     [SerializeField] private GameObject exteriorPrefab;
-
     [Tooltip("Prefab para las monedas")]
-    [SerializeField] private GameObject coinPrefab;
+    [SerializeField] public GameObject coinPrefab;
 
     [Header("Room Settings")]
     [Tooltip("Número total de salas")]
     [SerializeField] private int numberOfRooms = 1;
-
     [Tooltip("Ancho de cada sala")]
     [SerializeField] private int roomWidth = 5;
-
     [Tooltip("Largo de cada sala")]
     [SerializeField] private int roomLength = 5;
-
     [Tooltip("Densidad de elementos decorativos [%]")]
     [SerializeField] private float ítemsDensity = 20f;
-
     [Tooltip("Densidad de monedas [%]")]
     [SerializeField] private float coinsDensity = 20f;
 
@@ -54,8 +44,12 @@ public class LevelBuilder : MonoBehaviour
     private Transform roomParent;
 
     private int CoinsGenerated = 0;
+
     private HashSet<Vector3> humanSpawnPoints = new HashSet<Vector3>();
     private HashSet<Vector3> zombieSpawnPoints = new HashSet<Vector3>();
+
+    // Lista de posiciones candidatas para monedas
+    private List<Vector3> coinPositions = new List<Vector3>();
 
     #endregion
 
@@ -63,6 +57,7 @@ public class LevelBuilder : MonoBehaviour
 
     private void Awake()
     {
+        // Creamos un padre para mantener todo ordenado
         GameObject parentObject = new GameObject("RoomsParent");
         roomParent = parentObject.transform;
     }
@@ -71,281 +66,149 @@ public class LevelBuilder : MonoBehaviour
 
     #region World building methods
 
+    /// <summary>
+    /// Genera la estructura del nivel sin monedas.
+    /// </summary>
     public void Build()
     {
+        CoinsGenerated = 0;
+        humanSpawnPoints.Clear();
+        zombieSpawnPoints.Clear();
+        coinPositions.Clear();
+
         CreateRooms(roomWidth, roomLength, numberOfRooms);
     }
 
-    /// <summary>
-    /// Crea una matriz de habitaciones y calcula los puntos de aparición.
-    /// </summary>
-    private void CreateRooms(int roomWidth, int roomLength, int numberOfRooms)
+    private void CreateRooms(int width, int length, int count)
     {
-        int rows = Mathf.CeilToInt(Mathf.Sqrt(numberOfRooms)); // Filas
-        int cols = Mathf.CeilToInt((float)numberOfRooms / rows); // Columnas
+        int rows = Mathf.CeilToInt(Mathf.Sqrt(count));
+        int cols = Mathf.CeilToInt((float)count / rows);
 
         for (int i = 0; i < rows; i++)
         {
             for (int j = 0; j < cols; j++)
             {
-                float x = j * roomWidth;  // Posición X
-                float z = i * roomLength; // Posición Z
+                float x = j * roomWidth;
+                float z = i * roomLength;
 
-                CreateRoom(roomWidth, roomLength, x, z);
+                CreateRoom(width, length, x, z);
 
-                // Calcular spawn points
-                Vector3 spawnPoint = new Vector3(x + roomWidth / 2, 2, z + roomLength / 2);
+                Vector3 spawnPoint = new Vector3(x + width / 2f, 2f, z + length / 2f);
                 if (i % 2 == 0 && j % 2 == 0)
-                {
                     humanSpawnPoints.Add(spawnPoint);
-                }
                 else
-                {
                     zombieSpawnPoints.Add(spawnPoint);
-                }
             }
         }
 
-        CreateExterior(rows, cols, roomWidth, roomLength);
+        CreateExterior(rows, cols, width, length);
     }
 
-    /// <summary>
-    /// Crea una habitación con suelos y paredes.
-    /// </summary>
     private void CreateRoom(int width, int length, float offsetX, float offsetZ)
     {
-        if (floorPrefabs == null || floorPrefabs.Length == 0)
-        {
-            Debug.LogError("No se han asignado prefabs de suelo.");
-            return;
-        }
-
-        Debug.Log($"Creando habitación en ({offsetX}, {offsetZ}) con dimensiones {width}x{length}...");
         CreateFloor(width, length, offsetX, offsetZ);
-        Debug.Log($"Habitación generada en ({offsetX}, {offsetZ}).");
-
-        Debug.Log($"Creando paredes en ({offsetX}, {offsetZ}) con dimensiones {width}x{length}...");
         CreateWalls(width, length, offsetX, offsetZ);
-        Debug.Log($"Paredes generadas en ({offsetX}, {offsetZ}).");
     }
 
-    /// <summary>
-    /// Crea una cuadrícula de baldosas para el suelo de una habitación.
-    /// </summary>
     private void CreateFloor(int width, int length, float offsetX, float offsetZ)
     {
         for (int x = 0; x < width; x++)
-        {
             for (int z = 0; z < length; z++)
             {
-                int randomIndex = Random.Range(0, floorPrefabs.Length);
-                GameObject selectedFloorPrefab = floorPrefabs[randomIndex];
+                // Selección aleatoria de terreno
+                var floor = floorPrefabs[Random.Range(0, floorPrefabs.Length)];
+                Vector3 pos = new Vector3(x * tileSize + offsetX, 0, z * tileSize + offsetZ);
+                Instantiate(floor, pos, Quaternion.identity, roomParent);
 
-                Vector3 tilePosition = new Vector3(x * tileSize + offsetX, 0, z * tileSize + offsetZ);
-                GameObject tile = Instantiate(selectedFloorPrefab, tilePosition, Quaternion.identity, roomParent);
-                tile.name = $"Tile_{x}_{z}";
+                // Obstáculos decorativos
+                if (ShouldPlaceItem(x, z, width, length))
+                {
+                    var obs = obstaclesPrefabs[Random.Range(0, obstaclesPrefabs.Length)];
+                    Instantiate(obs, pos, Quaternion.identity, roomParent).tag = "Obstacle";
+                }
 
-                CreateDecorativeItem(x, z, width, length, tilePosition);
-                //CreateCoin(x, z, width, length, tilePosition);
+                // Registramos posición de moneda candidata
+                if (ShouldPlaceCoin(x, z, width, length))
+                    coinPositions.Add(pos);
             }
-        }
-
-        Debug.Log($"Suelo generado con dimensiones {width}x{length} usando {floorPrefabs.Length} prefabs diferentes.");
     }
 
-    /// <summary>
-    /// Coloca las esquinas, muros y puertas en los bordes de una habitación.
-    /// </summary>
     private void CreateWalls(int width, int length, float offsetX, float offsetZ)
     {
-        PlaceElement(cornerPrefab, 0 + offsetX, 0 + offsetZ, Quaternion.identity);                        // Esquina inferior izquierda
-        PlaceElement(cornerPrefab, (width - 1) * tileSize + offsetX, 0 + offsetZ, Quaternion.identity);   // Esquina inferior derecha
-        PlaceElement(cornerPrefab, 0 + offsetX, (length - 1) * tileSize + offsetZ, Quaternion.identity);  // Esquina superior izquierda
-        PlaceElement(cornerPrefab, (width - 1) * tileSize + offsetX, (length - 1) * tileSize + offsetZ, Quaternion.identity); // Esquina superior derecha
+        // Esquinas
+        Place(cornerPrefab, offsetX, offsetZ);
+        Place(cornerPrefab, (width - 1) * tileSize + offsetX, offsetZ);
+        Place(cornerPrefab, offsetX, (length - 1) * tileSize + offsetZ);
+        Place(cornerPrefab, (width - 1) * tileSize + offsetX, (length - 1) * tileSize + offsetZ);
 
-        int doorPositionBottom = (width - 1) / 2;  // Puerta en pared inferior
-        int doorPositionTop = (width - 1) / 2;     // Puerta en pared superior
-        int doorPositionLeft = (length - 1) / 2;   // Puerta en lateral izquierdo
-        int doorPositionRight = (length - 1) / 2;  // Puerta en lateral derecho
-
-        for (int x = 1; x < width - 1; x++) // Borde inferior y superior
+        // Paredes y puertas
+        int dpX = (width - 1) / 2, dpZ = (length - 1) / 2;
+        for (int i = 1; i < width - 1; i++)
         {
-            if (x == doorPositionBottom)
-            {
-                PlaceElement(doorPrefab, x * tileSize + offsetX, 0 + offsetZ, Quaternion.identity); // Puerta en borde inferior
-                PlaceElement(doorHolePrefab, x * tileSize + offsetX, 0 + offsetZ, Quaternion.identity); // Hueco de la puerta
-            }
-            else
-                PlaceElement(wallPrefab, x * tileSize + offsetX, 0 + offsetZ, Quaternion.identity); // Muro en borde inferior
+            // Inferior / Superior
+            if (i == dpX) { Place(doorPrefab, i * tileSize + offsetX, offsetZ); Place(doorHolePrefab, i * tileSize + offsetX, offsetZ); }
+            else Place(wallPrefab, i * tileSize + offsetX, offsetZ);
 
-            if (x == doorPositionTop)
-            {
-                PlaceElement(doorPrefab, x * tileSize + offsetX, (length - 1) * tileSize + offsetZ, Quaternion.Euler(0, 180, 0)); // Puerta en borde superior
-                PlaceElement(doorHolePrefab, x * tileSize + offsetX, (length - 1) * tileSize + offsetZ, Quaternion.identity); // Hueco de la puerta
-            }
-            else
-                PlaceElement(wallPrefab, x * tileSize + offsetX, (length - 1) * tileSize + offsetZ, Quaternion.identity); // Muro en borde superior
+            if (i == dpX) { Place(doorPrefab, i * tileSize + offsetX, (length - 1) * tileSize + offsetZ, Quaternion.Euler(0, 180, 0)); Place(doorHolePrefab, i * tileSize + offsetX, (length - 1) * tileSize + offsetZ); }
+            else Place(wallPrefab, i * tileSize + offsetX, (length - 1) * tileSize + offsetZ);
         }
-
-        for (int z = 1; z < length - 1; z++) // Laterales izquierdo y derecho
+        for (int i = 1; i < length - 1; i++)
         {
-            if (z == doorPositionLeft)
-            {
-                PlaceElement(doorPrefab, 0 + offsetX, z * tileSize + offsetZ, Quaternion.Euler(0, 90, 0)); // Puerta en lateral izquierdo (rotada 90 grados)
-                PlaceElement(doorHolePrefab, 0 + offsetX, z * tileSize + offsetZ, Quaternion.Euler(0, 90, 0)); // hueco de la puerta
-            }
-            else
-                PlaceElement(wallPrefab, 0 + offsetX, z * tileSize + offsetZ, Quaternion.Euler(0, 90, 0)); // Muro en lateral izquierdo (rotado 90 grados)
+            // Izquierda / Derecha
+            if (i == dpZ) { Place(doorPrefab, offsetX, i * tileSize + offsetZ, Quaternion.Euler(0, 90, 0)); Place(doorHolePrefab, offsetX, i * tileSize + offsetZ, Quaternion.Euler(0, 90, 0)); }
+            else Place(wallPrefab, offsetX, i * tileSize + offsetZ, Quaternion.Euler(0, 90, 0));
 
-            if (z == doorPositionRight)
-            {
-                PlaceElement(doorPrefab, (width - 1) * tileSize + offsetX, z * tileSize + offsetZ, Quaternion.Euler(0, 270, 0)); // Puerta en lateral derecho (rotada 270 grados)
-                PlaceElement(doorHolePrefab, (width - 1) * tileSize + offsetX, z * tileSize + offsetZ, Quaternion.Euler(0, 90, 0)); //hueco de la puerta
-            }
-            else
-                PlaceElement(wallPrefab, (width - 1) * tileSize + offsetX, z * tileSize + offsetZ, Quaternion.Euler(0, 90, 0)); // Muro en lateral derecho (rotado 90 grados)
+            if (i == dpZ) { Place(doorPrefab, (width - 1) * tileSize + offsetX, i * tileSize + offsetZ, Quaternion.Euler(0, 270, 0)); Place(doorHolePrefab, (width - 1) * tileSize + offsetX, i * tileSize + offsetZ, Quaternion.Euler(0, 270, 0)); }
+            else Place(wallPrefab, (width - 1) * tileSize + offsetX, i * tileSize + offsetZ, Quaternion.Euler(0, 90, 0));
         }
     }
 
-    /// <summary>
-    /// Instancia un prefab en una posición específica con una rotación específica.
-    /// </summary>
-    private void PlaceElement(GameObject prefab, float x, float z, Quaternion rotation)
+    private void CreateExterior(int rows, int cols, int width, int length)
     {
-        Vector3 position = new Vector3(x, 0, z);
-        Instantiate(prefab, position, rotation, roomParent);
+        float minX = -tileSize, maxX = cols * width, minZ = -tileSize, maxZ = rows * length;
+        for (float x = minX; x <= maxX; x += tileSize) { Place(exteriorPrefab, x, minZ); Place(exteriorPrefab, x, maxZ); }
+        for (float z = minZ; z < maxZ; z += tileSize) { Place(exteriorPrefab, minX, z); Place(exteriorPrefab, maxX, z); }
     }
 
-    /// <summary>
-    /// Crea el muro exterior alrededor de las salas.
-    /// </summary>
-    private void CreateExterior(int rows, int cols, int roomWidth, int roomLength)
+    private void Place(GameObject prefab, float x, float z, Quaternion rot = default)
     {
-        float minX = -tileSize;                        // Borde izquierdo
-        float maxX = cols * roomWidth;         // Borde derecho
-        float minZ = -tileSize;                        // Borde inferior
-        float maxZ = rows * roomLength;        // Borde superior
+        Instantiate(prefab, new Vector3(x, 0, z), rot, roomParent);
+    }
 
-        for (float x = minX; x <= maxX; x += tileSize)
+    /// <summary>Instancia todas las monedas en red o local.</summary>
+    public void SpawnCoins()
+    {
+        foreach (var pos in coinPositions)
         {
-            PlaceElement(exteriorPrefab, x, minZ, Quaternion.identity); // Fila inferior
-            PlaceElement(exteriorPrefab, x, maxZ, Quaternion.identity); // Fila superior
+            Instantiate(coinPrefab, pos, Quaternion.identity, roomParent);
+            CoinsGenerated++;
         }
-
-        for (float z = minZ; z < maxZ; z += tileSize)
-        {
-            PlaceElement(exteriorPrefab, minX, z, Quaternion.identity); // Columna izquierda
-            PlaceElement(exteriorPrefab, maxX, z, Quaternion.identity); // Columna derecha
-        }
-    }
-
-    /// <summary>
-    /// Coloca ítems decorativos en las baldosas del suelo.
-    /// </summary>
-    private void CreateDecorativeItem(int x, int z, int width, int length, Vector3 tilePosition)
-    {
-        bool widthBorderCondition = x > 0 && x < (width - 1);
-        bool lengthBorderCondition = z > 0 && z < (length - 1);
-
-        int doorPositionBottom = (width - 1) / 2;  // Puerta en pared inferior
-        int doorPositionTop = (width - 1) / 2;     // Puerta en pared superior
-        int doorPositionLeft = (length - 1) / 2;   // Puerta en lateral izquierdo
-        int doorPositionRight = (length - 1) / 2;  // Puerta en lateral derecho
-
-        bool blockingDoorConditionX = x != doorPositionBottom && x != doorPositionTop;
-        bool blockingDoorConditionZ = z != doorPositionLeft && z != doorPositionRight;
-
-        bool totalCondition = widthBorderCondition && lengthBorderCondition && blockingDoorConditionX && blockingDoorConditionZ;
-
-        if (totalCondition && ShouldPlaceItem())
-        {
-            int randomIndex = Random.Range(0, obstaclesPrefabs.Length);
-            GameObject obstaclePrefab = obstaclesPrefabs[randomIndex];
-            obstaclePrefab.tag = "Obstacle";
-            PlaceElement(obstaclePrefab, tilePosition.x, tilePosition.z, Quaternion.identity);
-        }
-    }
-
-    /// <summary>
-    /// Coloca monedas en las baldosas del suelo.
-    /// </summary>
-    private void CreateCoin(int x, int z, int width, int length, Vector3 tilePosition)
-    {
-        bool widthBorderCondition = x > 0 && x < (width - 1);
-        bool lengthBorderCondition = z > 0 && z < (length - 1);
-
-        bool totalCondition = widthBorderCondition && lengthBorderCondition;
-
-        if (totalCondition && ShouldPlaceCoin())
-        {
-            float checkRadius = 0.5f; // Ajusta según el tamaño de los prefabs
-
-            Collider[] colliders = Physics.OverlapSphere(tilePosition, checkRadius);
-            bool isPositionOccupied = colliders.Any(collider => collider.CompareTag("Obstacle"));
-
-            if (!isPositionOccupied) // Si no hay obstáculos, colocar la moneda
-            {
-                PlaceElement(coinPrefab, tilePosition.x, tilePosition.z, Quaternion.identity);
-                CoinsGenerated++;
-            }
-        }
-    }
-
-    /// <summary>
-    /// Determina si se debe colocar un ítem decorativo basado en la densidad configurada.
-    /// </summary>
-    private bool ShouldPlaceItem()
-    {
-        float randomValue = Random.Range(0, 100);
-        return randomValue < ítemsDensity;
-    }
-
-    /// <summary>
-    /// Determina si se debe colocar una moneda basada en la densidad configurada.
-    /// </summary>
-    private bool ShouldPlaceCoin()
-    {
-        float randomValue = Random.Range(0, 100);
-        return randomValue < coinsDensity;
+        Debug.Log($"Monedas instanciadas: {CoinsGenerated}");
     }
 
     #endregion
 
     #region Public methods
 
-    /// <summary>
-    /// Obtiene la lista de puntos de aparición de humanos.
-    /// </summary>
-    /// <returns>Lista de puntos de aparición de humanos.</returns>
-    public List<Vector3> GetHumanSpawnPoints()
+    public List<Vector3> GetHumanSpawnPoints() => humanSpawnPoints.ToList();
+    public List<Vector3> GetZombieSpawnPoints() => zombieSpawnPoints.ToList();
+    public int GetCoinsGenerated() => CoinsGenerated;
+
+    #endregion
+
+    #region Helpers
+
+    private bool ShouldPlaceItem(int x, int z, int w, int l)
     {
-        return humanSpawnPoints.ToList();
+        bool inside = x > 0 && x < w - 1 && z > 0 && z < l - 1;
+        return inside && Random.Range(0f, 100f) < ítemsDensity;
     }
 
-    /// <summary>
-    /// Obtiene la lista de puntos de aparición de zombies.
-    /// </summary>
-    /// <returns>Lista de puntos de aparición de zombies.</returns>
-    public List<Vector3> GetZombieSpawnPoints()
+    private bool ShouldPlaceCoin(int x, int z, int w, int l)
     {
-        return zombieSpawnPoints.ToList();
-    }
-
-    /// <summary>
-    /// Obtiene el número de monedas generadas.
-    /// </summary>
-    /// <returns>Número de monedas generadas.</returns>
-    public int GetCoinsGenerated()
-    {
-        return CoinsGenerated;
+        bool inside = x > 0 && x < w - 1 && z > 0 && z < l - 1;
+        return inside && Random.Range(0f, 100f) < coinsDensity;
     }
 
     #endregion
 }
-
-
-
-
-
-
-

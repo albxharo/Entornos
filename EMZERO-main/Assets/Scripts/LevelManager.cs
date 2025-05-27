@@ -46,6 +46,7 @@ public class LevelManager : MonoBehaviour
 
 
     private int CoinsGenerated = 0;
+    private bool generateCoins = false;
 
     public string PlayerPrefabName => playerPrefab.name;
     public string ZombiePrefabName => zombiePrefab.name;
@@ -125,19 +126,20 @@ public class LevelManager : MonoBehaviour
         }
 
         remainingSeconds = minutes * 60;
+        // 1) Construyo TODO el nivel sin monedas
+        levelBuilder.Build();
+        humanSpawnPoints = levelBuilder.GetHumanSpawnPoints();
+        zombieSpawnPoints = levelBuilder.GetZombieSpawnPoints();
+        CoinsGenerated = levelBuilder.GetCoinsGenerated(); // aquí será 0
 
-        // Obtener los puntos de aparición y el número de monedas generadas desde LevelBuilder
-        if (levelBuilder != null)
-        {
-            levelBuilder.Build();
-            humanSpawnPoints = levelBuilder.GetHumanSpawnPoints();
-            zombieSpawnPoints = levelBuilder.GetZombieSpawnPoints();
-            CoinsGenerated = levelBuilder.GetCoinsGenerated();
-        }
-
+        // 2) Spawneo jugadores
         SpawnTeams();
 
-        UpdateTeamUI();
+        // 3) Preparo UI
+        SetupUIForMode(GameMode.None);
+
+
+
     }
 
     private void Update()
@@ -147,11 +149,13 @@ public class LevelManager : MonoBehaviour
             return;    // hasta que no arranque, no entramos a lógica de tiempo/monedas
         if (gameMode == GameMode.Tiempo)
         {
+            generateCoins = false; 
             // Lógica para el modo de juego basado en tiempo
             HandleTimeLimitedGameMode();
         }
         else if (gameMode == GameMode.Monedas)
         {
+            generateCoins = true;
             // Lógica para el modo de juego basado en monedas
             HandleCoinBasedGameMode();
         }
@@ -501,19 +505,7 @@ public class LevelManager : MonoBehaviour
         SceneManager.LoadScene("MenuScene"); // Cambia "MenuScene" por el nombre de tu escena principal
     }
 
-    public Vector3 GetSpawnPoint(int index)
-    {
-        if (index >= 0 && index < humanSpawnPoints.Count)
-        {
-            return humanSpawnPoints[index];
-        }
-
-        Debug.LogWarning("Índice de spawn fuera de rango. Se usará el primer punto.");
-        return humanSpawnPoints[0]; // O alguna posición por defecto    }
-
-        #endregion
-
-    }
+    
 
     public int GetNumHumans()
     {
@@ -531,8 +523,32 @@ public class LevelManager : MonoBehaviour
         Debug.Log($"[LevelManager] StartGame() → modo={mode}");
         gameMode = mode;
         partidaIniciada = true;
+
+       
+        if (mode == GameMode.Monedas)
+        {
+            levelBuilder.SpawnCoins();
+            CoinsGenerated = levelBuilder.GetCoinsGenerated();
+        }
+
+        
         SetupUIForMode(mode);
     }
+
+    public Vector3 GetSpawnPoint(int index)
+    {
+        if (index >= 0 && index < humanSpawnPoints.Count)
+        {
+            return humanSpawnPoints[index];
+        }
+
+        Debug.LogWarning("Índice de spawn fuera de rango. Se usará el primer punto.");
+        return humanSpawnPoints[0]; // O alguna posición por defecto    }
+
+        #endregion
+
+    }
+
 
     private void SetupUIForMode(GameMode mode)
     {
