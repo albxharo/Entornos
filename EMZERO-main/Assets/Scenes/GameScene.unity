@@ -2460,7 +2460,7 @@ MonoBehaviour:
   playerPrefab: {fileID: 8947290730586645348, guid: cb4f2926f9ddb634fb81430a923273a9, type: 3}
   zombiePrefab: {fileID: 4242402687381181303, guid: 42625083221c5f4428e9a69d2f9deef2, type: 3}
   numberOfHumans: 1
-  numberOfZombies: 0
+  numberOfZombies: 1
   gameMode: 1
   minutes: 1
   gameOverPanel: {fileID: 861340988}
@@ -3559,14 +3559,6 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
-    - target: {fileID: 0}
-      propertyPath: GlobalObjectIdHash
-      value: 1145270083
-      objectReference: {fileID: 0}
-    - target: {fileID: 0}
-      propertyPath: InScenePlacedSourceGlobalObjectIdHash
-      value: 1169386763
-      objectReference: {fileID: 0}
     - target: {fileID: 3552500466905521283, guid: 1e5efdc10e8926246b8c839b04514785, type: 3}
       propertyPath: m_Name
       value: '@NetworkManager'

@@ -175,16 +175,33 @@ public class LevelBuilder : MonoBehaviour
         Instantiate(prefab, new Vector3(x, 0, z), rot, roomParent);
     }
 
-    /// <summary>Instancia todas las monedas en red o local.</summary>
+    
     public void SpawnCoins()
     {
+        if (!Unity.Netcode.NetworkManager.Singleton.IsServer)
+        {
+            Debug.LogWarning("Solo el servidor debe ejecutar SpawnCoins()");
+            return;
+        }
+
         foreach (var pos in coinPositions)
         {
-            Instantiate(coinPrefab, pos, Quaternion.identity, roomParent);
+            // 1) Instanciamos la moneda localmente
+            var coinInstance = Instantiate(coinPrefab, pos, Quaternion.identity, roomParent);
+            // 2) Obtenemos su NetworkObject
+            var no = coinInstance.GetComponent<Unity.Netcode.NetworkObject>();
+            if (no == null)
+            {
+                Debug.LogError("coinPrefab NO tiene NetworkObject!");
+                continue;
+            }
+            // 3) Y la spawnemos en red
+            no.Spawn();
             CoinsGenerated++;
         }
-        Debug.Log($"Monedas instanciadas: {CoinsGenerated}");
+        Debug.Log($"Monedas instanciadas en red: {CoinsGenerated}");
     }
+
 
     #endregion
 
