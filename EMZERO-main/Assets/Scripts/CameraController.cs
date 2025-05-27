@@ -54,7 +54,7 @@ public class CameraController : MonoBehaviour
 
         if (!playerAssigned)
         {
-            Debug.LogWarning("?? No se encontró jugador local para seguir.");
+            //Debug.LogWarning("?? No se encontró jugador local para seguir.");
         }
     }
     void LateUpdate()

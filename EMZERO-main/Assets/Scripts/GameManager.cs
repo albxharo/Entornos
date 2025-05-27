@@ -145,6 +145,17 @@ public class GameManager : NetworkBehaviour
         }
 
         jugadoresPendientes.Clear();
+        // avisamos a todos los clientes de que empiece el juego!
+        StartGameClientRpc(SelectedGameMode.Value);
+    }
+
+    [ClientRpc]
+    private void StartGameClientRpc(GameMode mode, ClientRpcParams rpcParams = default)
+    {
+        Debug.Log($"[GameManager] StartGameClientRpc recibido. Modo={mode}");
+        var lm = FindObjectOfType<LevelManager>();
+        if (lm != null)
+            lm.StartGame(mode);
     }
 
     private string AsignarEquipo(ulong clientId)
