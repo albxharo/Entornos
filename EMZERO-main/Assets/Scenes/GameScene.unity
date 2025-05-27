@@ -1587,6 +1587,8 @@ MonoBehaviour:
   pitchSpeed: 1
   minPitch: -60
   maxPitch: 10
+  yaw: 0
+  pitch: 2
 --- !u!1 &1319034008
 GameObject:
   m_ObjectHideFlags: 0
@@ -2104,8 +2106,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   playerPrefab: {fileID: 8947290730586645348, guid: cb4f2926f9ddb634fb81430a923273a9, type: 3}
   zombiePrefab: {fileID: 4242402687381181303, guid: 42625083221c5f4428e9a69d2f9deef2, type: 3}
-  numberOfHumans: 2
-  numberOfZombies: 2
+  numberOfHumans: 1
+  numberOfZombies: 1
   gameMode: 1
   minutes: 1
   gameOverPanel: {fileID: 861340988}
