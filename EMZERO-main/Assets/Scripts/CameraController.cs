@@ -9,14 +9,14 @@ public class CameraController : MonoBehaviour
     public float minPitch = -20f;       // Ángulo mínimo de inclinación
     public float maxPitch = 50f;        // Ángulo máximo de inclinación
 
-    private float yaw = 0f;             // Rotación alrededor del eje Y
-    private float pitch = 2f;           // Inclinación hacia arriba/abajo (eje X)
+    public float yaw = 0f;             // Rotación alrededor del eje Y
+    public float pitch = 2f;           // Inclinación hacia arriba/abajo (eje X)
 
     void LateUpdate()
     {
         if (player == null)
         {
-            Debug.LogWarning("Player reference is missing.");
+            //Debug.LogWarning("Player reference is missing.");
             return;
         }
 

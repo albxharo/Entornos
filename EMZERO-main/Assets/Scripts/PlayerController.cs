@@ -1,181 +1,136 @@
-using System;
-using TMPro;
-using Unity.Netcode;
 using UnityEngine;
+using Unity.Netcode;
+using TMPro;
 using UnityEngine.InputSystem;
 
 public class PlayerController : NetworkBehaviour
 {
+    [Header("UI")]
     private TextMeshProUGUI coinText;
 
     [Header("Stats")]
     public int CoinsCollected = 0;
 
     [Header("Character settings")]
-    public bool isZombie = false; // Añadir una propiedad para el estado del jugador
-    public string uniqueID; // Añadir una propiedad para el identificador único
+    public bool isZombie = false;
+    public string uniqueID;
 
     [Header("Movement Settings")]
-    public float moveSpeed = 5f;           // Velocidad de movimiento
-    public float zombieSpeedModifier = 0.8f; // Modificador de velocidad para zombies
-    public Animator animator;              // Referencia al Animator
-    public Transform cameraTransform;      // Referencia a la cámara
+    public float moveSpeed = 5f;
+    public float zombieSpeedModifier = 0.8f;
+    public Animator animator;
 
+    // Volvemos a exponer cameraTransform para LevelManager u otros
+    [HideInInspector]
+    public Transform cameraTransform;
 
-    private float horizontalInput;         // Entrada horizontal (A/D o flechas)
-    private float verticalInput;           // Entrada vertical (W/S o flechas)
+    // --- Internals de movimiento ---
+    private Vector3 _serverMoveDir = Vector3.zero;
+    private float _rotSpeed = 270f;
 
-
-    //------------------------
-    Transform _playerTransform;
-    Vector2 _input;
-    float _rotSpeed = 270f;
-
-    GameObject _GOlevelManager;
-
-    LevelManager _levelManager;
-
+    private LevelManager _levelManager;
 
     private void Awake()
     {
-        _playerTransform = transform;
-
-        _GOlevelManager = GameObject.Find("LevelManager");
-        _levelManager = _GOlevelManager.GetComponent<LevelManager>();
+        _levelManager = GameObject.Find("LevelManager").GetComponent<LevelManager>();
     }
-    void Start()
-    {
-        // Buscar el objeto "CanvasPlayer" en la escena
-        GameObject canvas = GameObject.Find("CanvasPlayer");
 
+    private void Start()
+    {
+        var canvas = GameObject.Find("CanvasPlayer");
         if (canvas != null)
         {
-            Debug.Log("Canvas encontrado");
-
-            // Buscar el Panel dentro del CanvasHud
-            Transform panel = canvas.transform.Find("PanelHud");
-            if (panel != null)
-            {
-                // Buscar el TextMeshProUGUI llamado "CoinsValue" dentro del Panel
-                Transform coinTextTransform = panel.Find("CoinsValue");
-                if (coinTextTransform != null)
-                {
-                    coinText = coinTextTransform.GetComponent<TextMeshProUGUI>();
-                }
-            }
+            var panel = canvas.transform.Find("PanelHud");
+            var coinTextTransform = panel?.Find("CoinsValue");
+            coinText = coinTextTransform?.GetComponent<TextMeshProUGUI>();
         }
-
         UpdateCoinUI();
-
-
     }
 
     public override void OnNetworkSpawn()
     {
         if (IsOwner)
         {
-            InitializeOwner() ;
+            // Asignamos la cámara principal al cameraTransform
+            var cam = Camera.main;
+            if (cam != null)
+            {
+                cameraTransform = cam.transform;
 
+                // También decimos al CameraController quién es su target
+                var cc = cam.GetComponent<CameraController>();
+                if (cc != null)
+                    cc.player = transform;
+            }
+
+            GetComponent<PlayerInput>().enabled = true;
         }
+
         if (IsServer)
         {
-            Vector3 _spawnPos = _levelManager.GetSpawnPoint(0);
-            transform.position = _spawnPos;
+            transform.position = _levelManager.GetSpawnPoint(0);
         }
 
-        Debug.Log($"Player spawned. IsOwner: {IsOwner}, IsClient: {IsClient}, IsServer: {IsServer}");
-
-
+        Debug.Log($"Player spawned. IsOwner: {IsOwner}, IsServer: {IsServer}");
         base.OnNetworkSpawn();
     }
 
-    private void InitializeOwner()
+    private void FixedUpdate()
     {
-        GetComponent<PlayerInput>().enabled = true;
+        if (!IsServer) return;
+
+        if (_serverMoveDir.sqrMagnitude > 0.01f)
+        {
+            var targetRot = Quaternion.LookRotation(_serverMoveDir);
+            transform.rotation = Quaternion.RotateTowards(
+                transform.rotation,
+                targetRot,
+                _rotSpeed * Time.fixedDeltaTime
+            );
+
+            float speed = isZombie ? moveSpeed * zombieSpeedModifier : moveSpeed;
+            transform.Translate(_serverMoveDir * speed * Time.fixedDeltaTime, Space.World);
+            animator.SetFloat("Speed", speed);
+        }
+        else
+        {
+            animator.SetFloat("Speed", 0f);
+        }
     }
 
-    void FixedUpdate()
-    {
-        if (!IsServer)
-            return;
-        // Leer entrada del teclado
-        horizontalInput = Input.GetAxis("Horizontal");
-        verticalInput = Input.GetAxis("Vertical");
-
-        // Mover el jugador
-        MovePlayer();
-
-        // Manejar las animaciones del jugador
-        HandleAnimations();
-    }
     public void OnMove(InputAction.CallbackContext ctx)
     {
-        OnMoveRpc(ctx.ReadValue<Vector2>());    
+        if (!IsOwner) return;
 
+        Vector2 input2D = ctx.ReadValue<Vector2>();
+        if (cameraTransform == null) return;
 
+        Vector3 camF = cameraTransform.forward; camF.y = 0;
+        Vector3 camR = cameraTransform.right; camR.y = 0;
+        Vector3 dir = (camF * input2D.y + camR * input2D.x).normalized;
+
+        animator.SetFloat("Speed", dir.magnitude * moveSpeed);
+        SendMoveDirectionServerRpc(dir);
     }
 
-
-    void MovePlayer()
+    [ServerRpc]
+    private void SendMoveDirectionServerRpc(Vector3 moveDir)
     {
-        /*if (cameraTransform == null) { return; }
-
-        // Calcular la dirección de movimiento en relación a la cámara
-        Vector3 moveDirection = (cameraTransform.forward * verticalinput+ cameraTransform.right * horizontalinput).normalized;
-        moveDirection.y = 0f; // Asegurarnos de que el movimiento es horizontal (sin componente Y)
-
-        // Mover el jugador usando el Transform
-        if (moveDirection != Vector3.zero)
-        {
-            // Calcular la rotación en Y basada en la dirección del movimiento
-            Quaternion targetRotation = Quaternion.LookRotation(moveDirection);
-            transform.rotation = Quaternion.RotateTowards(transform.rotation, targetRotation, 720f * Time.deltaTime);
-
-            // Ajustar la velocidad si es zombie
-            float adjustedSpeed = isZombie ? moveSpeed * zombieSpeedModifier : moveSpeed;
-
-            // Mover al jugador en la dirección deseada
-            Vector3 newPosition = moveDirection * adjustedSpeed * Time.fixedDeltaTime;
-            transform.Translate(moveDirection * adjustedSpeed * Time.fixedDeltaTime, Space.World);
-            OnMoveRpc(newPosition);
-        }*/
-        _playerTransform.Translate(Vector3.forward *(_input.y * moveSpeed* Time.fixedDeltaTime));
-        _playerTransform.Rotate(Vector3.up *(_input.x * _rotSpeed * Time.fixedDeltaTime));
-
-
-    }
-
-
-    //---------
-    [Rpc(SendTo.Server)]
-    void OnMoveRpc(Vector2 input)
-    {
-
-        _input = input;
-    }
-
-    void HandleAnimations()
-    {
-        // Animaciones basadas en la dirección del movimiento
-        animator.SetFloat("Speed", Mathf.Abs(horizontalInput) + Mathf.Abs(verticalInput));  // Controla el movimiento (caminar/correr)
+        _serverMoveDir = moveDir;
     }
 
     public void CoinCollected()
     {
-        if (!isZombie) // Solo los humanos pueden recoger monedas
+        if (!isZombie)
         {
-            this.CoinsCollected++;
+            CoinsCollected++;
             UpdateCoinUI();
         }
     }
 
-    void UpdateCoinUI()
+    private void UpdateCoinUI()
     {
         if (coinText != null)
-        {
-            coinText.text = $"{CoinsCollected}";
-        }
+            coinText.text = CoinsCollected.ToString();
     }
-
 }
-

@@ -21,10 +21,10 @@ public class LevelManager : MonoBehaviour
 
     [Header("Team Settings")]
     [Tooltip("Número de jugadores humanos")]
-    [SerializeField] private int numberOfHumans = 2;
+    [SerializeField] private int numberOfHumans = 1;
 
     [Tooltip("Número de zombis")]
-    [SerializeField] private int numberOfZombies = 2;
+    [SerializeField] private int numberOfZombies = 1;
 
     [Header("Game Mode Settings")]
     [Tooltip("Selecciona el modo de juego")]

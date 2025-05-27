@@ -2080,6 +2080,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1720106049}
   - component: {fileID: 1720106052}
+  - component: {fileID: 1720106053}
   - component: {fileID: 1720106051}
   - component: {fileID: 1720106050}
   - component: {fileID: 1720106048}
@@ -2104,8 +2105,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   playerPrefab: {fileID: 8947290730586645348, guid: cb4f2926f9ddb634fb81430a923273a9, type: 3}
   zombiePrefab: {fileID: 4242402687381181303, guid: 42625083221c5f4428e9a69d2f9deef2, type: 3}
-  numberOfHumans: 2
-  numberOfZombies: 2
+  numberOfHumans: 1
+  numberOfZombies: 0
   gameMode: 1
   minutes: 1
   gameOverPanel: {fileID: 861340988}
@@ -2183,6 +2184,27 @@ MonoBehaviour:
   roomLength: 9
   "\xEDtemsDensity": 20
   coinsDensity: 20
+--- !u!114 &1720106053
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1720106047}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  GlobalObjectIdHash: 4255017434
+  InScenePlacedSourceGlobalObjectIdHash: 0
+  AlwaysReplicateAsRoot: 0
+  SynchronizeTransform: 1
+  ActiveSceneSynchronization: 0
+  SceneMigrationSynchronization: 1
+  SpawnWithObservers: 1
+  DontDestroyWithOwner: 0
+  AutoObjectParentSync: 1
 --- !u!1 &1726941678
 GameObject:
   m_ObjectHideFlags: 0
