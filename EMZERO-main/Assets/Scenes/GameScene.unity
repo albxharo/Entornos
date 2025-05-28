@@ -1065,7 +1065,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &263592881
 RectTransform:
   m_ObjectHideFlags: 0
@@ -1426,12 +1426,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _NetworkManager: {fileID: 1487250608}
-  panelNick: {fileID: 0}
-  panelModoJuego: {fileID: 0}
-  panelEspera: {fileID: 0}
-  nickText: {fileID: 0}
-  textoEspera: {fileID: 0}
-  idGenerator: {fileID: 0}
+  panelNick: {fileID: 263592880}
+  panelModoJuego: {fileID: 1725578866}
+  nickText: {fileID: 1726504187}
+  idGenerator: {fileID: 920058555}
 --- !u!4 &522787036
 Transform:
   m_ObjectHideFlags: 0

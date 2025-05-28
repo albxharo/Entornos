@@ -11,8 +11,14 @@ public class PlayerData : NetworkBehaviour
         if (IsOwner)
         {
             string nickname = PlayerPrefs.GetString("PlayerNickname", "JugadorDesconocido");
+            Debug.Log($"[PlayerData] Nick en PlayerPrefs para ClientID {OwnerClientId}: {nickname}");
             SetNicknameServerRpc(nickname);
         }
+
+        Nickname.OnValueChanged += (oldValue, newValue) =>
+        {
+            Debug.Log($"[PlayerData] Nick actualizado para {OwnerClientId}: {newValue}");
+        };
     }
 
     [ServerRpc]
