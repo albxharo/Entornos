@@ -6,16 +6,18 @@ using TMPro;
 
 public class UIManager : MonoBehaviour
 {
-    public static UIManager Instance;
+    public static UIManager Instance; // Singleton para acceso fácil
 
     [SerializeField] private NetworkManager _NetworkManager;
 
     [Header("Paneles UI")]
     [SerializeField] private GameObject panelNick;
     [SerializeField] private GameObject panelModoJuego;
+    [SerializeField] private GameObject panelEspera;
 
     [Header("Referencias de texto")]
     [SerializeField] private TMP_Text nickText;
+    [SerializeField] private TMP_Text textoEspera;
 
     [Header("Generador de nombres")]
     [SerializeField] private UniqueIdGenerator idGenerator;
@@ -40,6 +42,7 @@ public class UIManager : MonoBehaviour
     {
         panelNick.SetActive(false);
         panelModoJuego.SetActive(false);
+        panelEspera.SetActive(false);
 
         NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnected;
     }
@@ -59,6 +62,7 @@ public class UIManager : MonoBehaviour
         }
     }
 
+    // Mostrar panel para elegir nick y generar uno nuevo
     public void MostrarPanelNick()
     {
         currentNick = idGenerator.GenerateUniqueID();
@@ -66,15 +70,13 @@ public class UIManager : MonoBehaviour
 
         panelNick.SetActive(true);
         panelModoJuego.SetActive(false);
+        panelEspera.SetActive(false);
     }
 
+    // Método para que NicknameSelector confirme el nick y gestione paneles
     public void ConfirmarNick(string nick)
     {
         currentNick = nick;
-        // Guardar el nick en PlayerPrefs para que PlayerData lo use
-        PlayerPrefs.SetString("PlayerNickname", currentNick);
-        PlayerPrefs.Save();
-
         Debug.Log($"Nick confirmado: {currentNick} | IsHost={NetworkManager.Singleton.IsHost} | IsClient={NetworkManager.Singleton.IsClient}");
 
         panelNick.SetActive(false);
@@ -82,34 +84,19 @@ public class UIManager : MonoBehaviour
         if (NetworkManager.Singleton.IsHost)
         {
             panelModoJuego.SetActive(true);
+            panelEspera.SetActive(false);
             Debug.Log("Host: mostrando panelModoJuego");
         }
         else
         {
             panelModoJuego.SetActive(false);
+            panelEspera.SetActive(true);
+            textoEspera.text = $"Esperando al host para elegir el modo de juego...\nTu nick: {currentNick}";
+            Debug.Log("Cliente: mostrando panelEspera");
         }
     }
 
-    // Llamado por botón del host para iniciar el juego
-    public void ElegirModoDeJuego()
-    {
-        panelModoJuego.SetActive(false);
-
-        Debug.Log("Host ha elegido el modo de juego. Iniciando escena...");
-        IniciarJuegoServerRpc();
-    }
-
-    [ServerRpc(RequireOwnership = false)]
-    private void IniciarJuegoServerRpc()
-    {
-        // Aquí puedes reemplazarlo por tu lógica de cambio de escena
-        // NetworkManager.SceneManager.LoadScene("NombreEscena", LoadSceneMode.Single);
-        Debug.Log("ServerRpc: iniciando juego para todos los clientes...");
-
-        // Simulación de carga (puedes cambiarlo luego)
-        NetworkManager.Singleton.SceneManager.LoadScene("NombreDeLaEscena", UnityEngine.SceneManagement.LoadSceneMode.Single);
-    }
-
+    // Botones para iniciar Host, Client o Server (puedes adaptarlo o quitarlo si usas UI en canvas)
     private void OnGUI()
     {
         GUILayout.BeginArea(new Rect(10, 10, 300, 300));

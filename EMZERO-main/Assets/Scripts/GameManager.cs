@@ -29,8 +29,6 @@ public class GameManager : NetworkBehaviour
     private GameObject canvas;
     public GameObject readycanvas;
 
-    [SerializeField] private GameObject panelNombre;
-
     public NetworkVariable<int> lastTypePlayer =
         new NetworkVariable<int>(
              1,
@@ -58,19 +56,10 @@ public class GameManager : NetworkBehaviour
 
         canvas = GameObject.Find("CanvasPlayer");
 
-        //Asegurarse de que el panel del nombre esté activo al inicio
-        if (panelNombre != null)
-            panelNombre.SetActive(true);
+        //panelReady = canvas.transform.Find("Panelready");
 
         numHumans = _levelManager.GetNumHumans();
         numZombies = _levelManager.GetNumZombies();
-    }
-
-    //Llamar a esto al confirmar el nombre desde tu UI
-    public void ConfirmarNombreJugador()
-    {
-        if (panelNombre != null)
-            panelNombre.SetActive(false);
     }
 
     public void OnNumPlayersChange(int numero)
