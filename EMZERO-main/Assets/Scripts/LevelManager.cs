@@ -242,20 +242,20 @@ public class LevelManager : NetworkBehaviour
         pc.isZombie = true;
         pc.uniqueID = uniqueID;
 
-        // UI y cámara
-        if (enabled)
-        {
-            Camera cam = Camera.main;
-            if (cam != null)
+            // UI y cámara
+            if (enabled && clientId == NetworkManager.Singleton.LocalClientId)
             {
-                var cc = cam.GetComponent<CameraController>();
-                if (cc != null) cc.player = zombie.transform;
+                Camera cam = Camera.main;
+                if (cam != null)
+                {
+                    var cc = cam.GetComponent<CameraController>();
+                    if (cc != null) cc.player = zombie.transform;
 
-                pc.cameraTransform = cam.transform;
+                    pc.cameraTransform = cam.transform;
+                }
             }
-        }
 
-        numberOfHumans--;
+            numberOfHumans--;
         numberOfZombies++;
         UpdateTeamUI();
     }
