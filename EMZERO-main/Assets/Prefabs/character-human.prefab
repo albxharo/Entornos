@@ -189,7 +189,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   CoinsCollected: 0
-  isZombie: 1
+  isZombie: 0
   uniqueID: 
   moveSpeed: 5
   zombieSpeedModifier: 0.8

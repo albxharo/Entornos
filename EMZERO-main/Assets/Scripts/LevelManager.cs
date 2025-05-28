@@ -219,70 +219,48 @@ public class LevelManager : NetworkBehaviour
         ChangeToZombie(currentPlayer, true);
     }
 
-    public void ChangeToZombie(GameObject human, bool enabled)
+   public void ChangeToZombie(GameObject human, bool enabled)
+{
+    if (human == null) return;
+
+    NetworkObject oldNO = human.GetComponent<NetworkObject>();
+    ulong clientId = oldNO.OwnerClientId;
+    string uniqueID = human.GetComponent<PlayerController>().uniqueID;
+    Vector3 pos = human.transform.position;
+    Quaternion rot = human.transform.rotation;
+
+    Destroy(human);
+
+    GameObject zombie = Instantiate(zombiePrefab, pos, rot);
+    var zombieNO = zombie.GetComponent<NetworkObject>();
+    zombieNO.SpawnAsPlayerObject(clientId); // ¡le asigna el control al mismo jugador!
+
+    var pc = zombie.GetComponent<PlayerController>();
+    if (pc != null)
     {
-        Debug.Log("Cambiando a Zombie");
+        pc.enabled = enabled;
+        pc.isZombie = true;
+        pc.uniqueID = uniqueID;
 
-        if (human != null)
+        // UI y cámara
+        if (enabled)
         {
-            // Guardar la posición, rotación y uniqueID del humano actual
-            Vector3 playerPosition = human.transform.position;
-            Quaternion playerRotation = human.transform.rotation;
-            string uniqueID = human.GetComponent<PlayerController>().uniqueID;
-
-            // Destruir el humano actual
-            Destroy(human);
-
-            // Instanciar el prefab del zombie en la misma posición y rotación
-            GameObject zombie = Instantiate(zombiePrefab, playerPosition, playerRotation);
-            if (enabled) { zombie.tag = "Player"; }
-
-            // Obtener el componente PlayerController del zombie instanciado
-            PlayerController playerController = zombie.GetComponent<PlayerController>();
-            if (playerController != null)
+            Camera cam = Camera.main;
+            if (cam != null)
             {
-                playerController.enabled = enabled;
-                playerController.isZombie = true; // Cambiar el estado a zombie
-                playerController.uniqueID = uniqueID; // Mantener el identificador único
-                numberOfHumans--; // Reducir el número de humanos
-                numberOfZombies++; // Aumentar el número de zombis
-                UpdateTeamUI();
+                var cc = cam.GetComponent<CameraController>();
+                if (cc != null) cc.player = zombie.transform;
 
-                if (enabled)
-                {
-                    // Obtener la referencia a la cámara principal
-                    Camera mainCamera = Camera.main;
-
-                    if (mainCamera != null)
-                    {
-                        // Obtener el script CameraController de la cámara principal
-                        CameraController cameraController = mainCamera.GetComponent<CameraController>();
-
-                        if (cameraController != null)
-                        {
-                            // Asignar el zombie al script CameraController
-                            cameraController.player = zombie.transform;
-                        }
-
-                        // Asignar el transform de la cámara al PlayerController
-                        playerController.cameraTransform = mainCamera.transform;
-                    }
-                    else
-                    {
-                        Debug.LogError("No se encontró la cámara principal.");
-                    }
-                }
-            }
-            else
-            {
-                Debug.LogError("PlayerController no encontrado en el zombie instanciado.");
+                pc.cameraTransform = cam.transform;
             }
         }
-        else
-        {
-            Debug.LogError("No se encontró el humano actual.");
-        }
+
+        numberOfHumans--;
+        numberOfZombies++;
+        UpdateTeamUI();
     }
+}
+
 
     private void ChangeToHuman()
     {

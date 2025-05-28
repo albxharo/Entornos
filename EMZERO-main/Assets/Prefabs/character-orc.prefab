@@ -73,7 +73,7 @@ PrefabInstance:
       addedObject: {fileID: 7747007391555917777}
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 733de46ad15449742a994275e9659d92, type: 3}
       insertIndex: -1
-      addedObject: {fileID: -5958015653143517070}
+      addedObject: {fileID: 1763023875564482629}
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 733de46ad15449742a994275e9659d92, type: 3}
       insertIndex: -1
       addedObject: {fileID: 6422045049281082059}
@@ -167,7 +167,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  GlobalObjectIdHash: 4065845211
+  GlobalObjectIdHash: 728973987
   InScenePlacedSourceGlobalObjectIdHash: 0
   AlwaysReplicateAsRoot: 0
   SynchronizeTransform: 1
@@ -195,7 +195,7 @@ MonoBehaviour:
   zombieSpeedModifier: 0.8
   animator: {fileID: 5266923850224609321}
   cameraTransform: {fileID: 0}
---- !u!114 &-5958015653143517070
+--- !u!114 &1763023875564482629
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}

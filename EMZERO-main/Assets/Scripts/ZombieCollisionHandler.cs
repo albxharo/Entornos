@@ -1,25 +1,35 @@
 using UnityEngine;
+using Unity.Netcode;
 
-public class ZombieCollisionHandler : MonoBehaviour
+public class ZombieCollisionHandler : NetworkBehaviour
 {
     private void OnCollisionEnter(Collision collision)
     {
-        PlayerController playerController = collision.gameObject.GetComponent<PlayerController>();
-        Debug.Log("Colisión detectada con " + collision.gameObject.name);
-        if (playerController != null && !playerController.isZombie)
-        {
-            playerController.isZombie = true;
-            Debug.Log("PlayerController encontrado: " + playerController.uniqueID);
+        if (!IsOwner) return; // Solo el dueño del zombi ejecuta esto
 
-            // Obtener el prefab de humano desde el LevelManager
-            LevelManager levelManager = FindObjectOfType<LevelManager>();
-            if (levelManager != null && collision.gameObject.name.Contains(levelManager.PlayerPrefabName))
+        // Si choca con un humano
+        var target = collision.gameObject.GetComponent<PlayerController>();
+        if (target != null && !target.isZombie)
+        {
+            // Llama al servidor para hacer la conversión en red
+            RequestConversionServerRpc(target.NetworkObjectId);
+        }
+    }
+
+    [ServerRpc(RequireOwnership = false)]
+    void RequestConversionServerRpc(ulong targetNetId)
+    {
+        if (NetworkManager.Singleton.SpawnManager.SpawnedObjects.TryGetValue(targetNetId, out var targetObject))
+        {
+            var player = targetObject.GetComponent<PlayerController>();
+            if (player != null && !player.isZombie)
             {
-                // Cambiar el humano a zombie
-                levelManager.ChangeToZombie(collision.gameObject, playerController.enabled);
+                var levelManager = FindObjectOfType<LevelManager>();
+                if (levelManager != null)
+                {
+                    levelManager.ChangeToZombie(targetObject.gameObject, true);
+                }
             }
         }
     }
 }
-
-
