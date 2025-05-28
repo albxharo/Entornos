@@ -1,9 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.UI;
+using UnityEngine.Networking;
+using Unity.Netcode;
 
 public enum GameMode
 {
@@ -12,7 +16,8 @@ public enum GameMode
     Monedas
 }
 
-public class LevelManager : MonoBehaviour
+
+public class LevelManager : NetworkBehaviour
 {
     #region Properties
 
@@ -37,6 +42,9 @@ public class LevelManager : MonoBehaviour
     private List<Vector3> humanSpawnPoints = new List<Vector3>();
     private List<Vector3> zombieSpawnPoints = new List<Vector3>();
 
+    [SerializeField] private GameObject panelNumJugadores;
+    [SerializeField] private TMP_InputField inputFieldNumJugadores;
+
     // Referencias a los elementos de texto en el canvas
     private TextMeshProUGUI humansText;
     private TextMeshProUGUI zombiesText;
@@ -46,7 +54,6 @@ public class LevelManager : MonoBehaviour
 
 
     private int CoinsGenerated = 0;
-    private bool generateCoins = false;
 
     public string PlayerPrefabName => playerPrefab.name;
     public string ZombiePrefabName => zombiePrefab.name;
@@ -63,6 +70,15 @@ public class LevelManager : MonoBehaviour
     private bool partidaIniciada = false;
     public GameObject gameOverPanel; // Asigna el panel desde el inspector
 
+    public GameObject GO_gameManager;
+    private GameManager gameManager;
+
+    public NetworkVariable<int> numJugadores = new NetworkVariable<int>(
+             0,
+            NetworkVariableReadPermission.Everyone,
+            NetworkVariableWritePermission.Server
+        );
+
     #endregion
 
     #region Unity game loop methods
@@ -76,6 +92,8 @@ public class LevelManager : MonoBehaviour
 
         // Obtener la referencia al LevelBuilder
         levelBuilder = GetComponent<LevelBuilder>();
+
+        gameManager = GO_gameManager.GetComponent<GameManager>();
 
         Time.timeScale = 1f; // Asegurarse de que el tiempo no esté detenido
     }
@@ -126,20 +144,19 @@ public class LevelManager : MonoBehaviour
         }
 
         remainingSeconds = minutes * 60;
-        // 1) Construyo TODO el nivel sin monedas
-        levelBuilder.Build();
-        humanSpawnPoints = levelBuilder.GetHumanSpawnPoints();
-        zombieSpawnPoints = levelBuilder.GetZombieSpawnPoints();
-        CoinsGenerated = levelBuilder.GetCoinsGenerated(); // aquí será 0
 
-        // 2) Spawneo jugadores
+        // Obtener los puntos de aparición y el número de monedas generadas desde LevelBuilder
+        if (levelBuilder != null)
+        {
+            levelBuilder.Build();
+            humanSpawnPoints = levelBuilder.GetHumanSpawnPoints();
+            zombieSpawnPoints = levelBuilder.GetZombieSpawnPoints();
+            CoinsGenerated = levelBuilder.GetCoinsGenerated();
+        }
+
         SpawnTeams();
 
-        // 3) Preparo UI
-        SetupUIForMode(GameMode.None);
-
-
-
+        UpdateTeamUI();
     }
 
     private void Update()
@@ -149,13 +166,11 @@ public class LevelManager : MonoBehaviour
             return;    // hasta que no arranque, no entramos a lógica de tiempo/monedas
         if (gameMode == GameMode.Tiempo)
         {
-            generateCoins = false; 
             // Lógica para el modo de juego basado en tiempo
             HandleTimeLimitedGameMode();
         }
         else if (gameMode == GameMode.Monedas)
         {
-            generateCoins = true;
             // Lógica para el modo de juego basado en monedas
             HandleCoinBasedGameMode();
         }
@@ -494,6 +509,32 @@ public class LevelManager : MonoBehaviour
             Cursor.visible = true; // Hace visible el cursor
         }
     }
+    public void SetNumPlayers()
+    {
+        Debug.Log("Recibido el input field");
+        if (IsHost)
+        {
+            string texto = inputFieldNumJugadores.text;
+
+
+            if (int.TryParse(texto, out int numero))
+            {
+                SetNumPlayersRpc(numero);
+
+
+                panelNumJugadores.SetActive(false);
+            }
+            else
+            {
+                Debug.LogWarning("Entrada inválida. Asegúrate de introducir un número.");
+            }
+        }
+    }
+
+    private void SetNumPlayersRpc(int numero)
+    {
+        numJugadores.Value = numero;
+    }
 
     public void ReturnToMainMenu()
     {
@@ -505,37 +546,7 @@ public class LevelManager : MonoBehaviour
         SceneManager.LoadScene("MenuScene"); // Cambia "MenuScene" por el nombre de tu escena principal
     }
 
-    
-
-    public int GetNumHumans()
-    {
-        return numberOfHumans;
-    }
-
-    public int GetNumZombies()
-    {
-        return numberOfZombies;
-    }
-
-    // Exponer para el RPC
-    public void StartGame(GameMode mode)
-    {
-        Debug.Log($"[LevelManager] StartGame() → modo={mode}");
-        gameMode = mode;
-        partidaIniciada = true;
-
-       
-        if (mode == GameMode.Monedas)
-        {
-            levelBuilder.SpawnCoins();
-            CoinsGenerated = levelBuilder.GetCoinsGenerated();
-        }
-
-        
-        SetupUIForMode(mode);
-    }
-
-    public Vector3 GetSpawnPoint(int index)
+    public Vector3 GetHumanSpawnPoint(int index)
     {
         if (index >= 0 && index < humanSpawnPoints.Count)
         {
@@ -545,10 +556,43 @@ public class LevelManager : MonoBehaviour
         Debug.LogWarning("Índice de spawn fuera de rango. Se usará el primer punto.");
         return humanSpawnPoints[0]; // O alguna posición por defecto    }
 
-        #endregion
 
     }
 
+    public Vector3 GetZombieSpawnPoint(int index)
+    {
+        if (index >= 0 && index < zombieSpawnPoints.Count)
+        {
+            return zombieSpawnPoints[index];
+        }
+
+        Debug.LogWarning("Índice de spawn fuera de rango. Se usará el primer punto.");
+        return zombieSpawnPoints[0]; // O alguna posición por defecto    }
+
+#endregion
+
+    }
+
+    public int GetNumHumans()
+    {
+        return numJugadores.Value;
+    }
+
+    public int GetNumZombies()
+    {
+        return numJugadores.Value;
+    }
+
+
+
+    // Exponer para el RPC
+    public void StartGame(GameMode mode)
+    {
+        Debug.Log($"[LevelManager] StartGame() → modo={mode}");
+        gameMode = mode;
+        partidaIniciada = true;
+        SetupUIForMode(mode);
+    }
 
     private void SetupUIForMode(GameMode mode)
     {
@@ -567,6 +611,16 @@ public class LevelManager : MonoBehaviour
             coinLabelText.gameObject.SetActive(true);
             coinValueText.gameObject.SetActive(true);
         }
+    }
+
+    public override void OnNetworkSpawn()
+    {
+        panelNumJugadores.SetActive(IsHost);
+        numJugadores.OnValueChanged += (oldNumber, newNumber) =>
+        {
+            gameManager.OnNumPlayersChange(newNumber);
+
+        };
     }
 
 }

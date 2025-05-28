@@ -66,11 +66,6 @@ public class PlayerController : NetworkBehaviour
             GetComponent<PlayerInput>().enabled = true;
         }
 
-        if (IsServer)
-        {
-           transform.position = _levelManager.GetSpawnPoint(0);
-
-        }
 
         Debug.Log($"Player spawned. IsOwner: {IsOwner}, IsServer: {IsServer}");
         base.OnNetworkSpawn();
@@ -134,4 +129,7 @@ public class PlayerController : NetworkBehaviour
         if (coinText != null)
             coinText.text = CoinsCollected.ToString();
     }
+
+
+
 }
