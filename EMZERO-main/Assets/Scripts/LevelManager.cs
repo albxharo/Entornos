@@ -65,6 +65,7 @@ public class LevelManager : NetworkBehaviour
 
     private float remainingSeconds;
     private bool isGameOver = false;
+    private ulong? ultimoHumanoId = null;
 
     // Estado local
     private bool partidaIniciada = false;
@@ -622,10 +623,19 @@ public class LevelManager : NetworkBehaviour
             if (pc == null) continue;
 
             string msg;
-            if (pc.isZombie)
-                msg = pc.isOriginalZombie ? "¡Victoria total para zombis originales!" : "¡Victoria parcial para zombis convertidos!";
-            else
+
+            if (ultimoHumanoId.HasValue && pc.OwnerClientId == ultimoHumanoId.Value)
+            {
                 msg = "Has sido el último humano. Derrota.";
+            }
+            else if (pc.isZombie)
+            {
+                msg = pc.isOriginalZombie ? "¡Victoria total para zombis originales!" : "¡Victoria parcial para zombis convertidos!";
+            }
+            else
+            {
+                msg = "Derrota.";
+            }
 
             ShowGameOverClientRpc(msg, new ClientRpcParams
             {
@@ -654,6 +664,20 @@ public class LevelManager : NetworkBehaviour
 
     public void CheckEndGameCondition()
     {
+        if (numberOfHumans == 1)
+        {
+            // Busca y guarda el último humano antes de que se convierta
+            foreach (var client in NetworkManager.Singleton.ConnectedClientsList)
+            {
+                var pc = client.PlayerObject?.GetComponent<PlayerController>();
+                if (pc != null && !pc.isZombie)
+                {
+                    ultimoHumanoId = client.ClientId;
+                    break;
+                }
+            }
+        }
+
         if (numberOfHumans == 0 && !isGameOver)
         {
             isGameOver = true;
