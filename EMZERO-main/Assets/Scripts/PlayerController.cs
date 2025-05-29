@@ -12,14 +12,13 @@ public class PlayerController : NetworkBehaviour
     public int CoinsCollected = 0;          // Contador de monedas
 
     [Header("Character settings")]
-    public bool isZombie = false;          // Está infectado?
-    public string uniqueID;                // ID único del jugador
+    public bool isZombie = false;            // Está infectado?
+    public string uniqueID;                  // ID único del jugador
 
     [Header("Movement Settings")]
     public float moveSpeed = 5f;             // Velocidad normal
     public float zombieSpeedModifier = 0.8f; // Reducción de velocidad si es zombie
     public Animator animator;                // Animador del personaje
-
 
     // Volvemos a exponer cameraTransform para LevelManager u otros
     [HideInInspector]
@@ -30,6 +29,9 @@ public class PlayerController : NetworkBehaviour
     private float _rotSpeed = 270f;
 
     private LevelManager _levelManager;
+
+    // NetworkVariable para sincronizar la velocidad del Animator
+    public NetworkVariable<float> networkedSpeed = new NetworkVariable<float>(0f);
 
     private void Awake()
     {
@@ -52,6 +54,11 @@ public class PlayerController : NetworkBehaviour
 
     public override void OnNetworkSpawn()
     {
+        base.OnNetworkSpawn();
+
+        // Escuchar cambios de velocidad para animación
+        networkedSpeed.OnValueChanged += OnSpeedChanged;
+
         if (IsOwner)
         {
             // Asignamos la cámara principal al cameraTransform
@@ -70,9 +77,18 @@ public class PlayerController : NetworkBehaviour
             GetComponent<PlayerInput>().enabled = true;
         }
 
-
         Debug.Log($"Player spawned. IsOwner: {IsOwner}, IsServer: {IsServer}");
-        base.OnNetworkSpawn();
+    }
+
+    public override void OnNetworkDespawn()
+    {
+        networkedSpeed.OnValueChanged -= OnSpeedChanged;
+        base.OnNetworkDespawn();
+    }
+
+    private void OnSpeedChanged(float oldSpeed, float newSpeed)
+    {
+        animator.SetFloat("Speed", newSpeed);
     }
 
     private void FixedUpdate()
@@ -92,12 +108,13 @@ public class PlayerController : NetworkBehaviour
             // Mover al personaje
             float speed = isZombie ? moveSpeed * zombieSpeedModifier : moveSpeed;
             transform.Translate(_serverMoveDir * speed * Time.fixedDeltaTime, Space.World);
-            animator.SetFloat("Speed", speed);
+
+            // Actualizar la variable de red que sincroniza la animación
+            networkedSpeed.Value = speed;
         }
         else
         {
-            // Parar animación si no hay movimiento
-            animator.SetFloat("Speed", 0f);
+            networkedSpeed.Value = 0f;
         }
     }
 
@@ -113,7 +130,7 @@ public class PlayerController : NetworkBehaviour
         Vector3 camR = cameraTransform.right; camR.y = 0;
         Vector3 dir = (camF * input2D.y + camR * input2D.x).normalized;
 
-        animator.SetFloat("Speed", dir.magnitude * moveSpeed);
+        // No seteamos animator aquí para evitar conflicto con sincronización
 
         // Enviar dirección al servidor
         SendMoveDirectionServerRpc(dir);
@@ -140,7 +157,4 @@ public class PlayerController : NetworkBehaviour
         if (coinText != null)
             coinText.text = CoinsCollected.ToString();
     }
-
-
-
 }
