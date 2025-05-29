@@ -6,19 +6,20 @@ using UnityEngine.InputSystem;
 public class PlayerController : NetworkBehaviour
 {
     [Header("UI")]
-    private TextMeshProUGUI coinText;
+    private TextMeshProUGUI coinText;       // Texto de monedas en el HUD
 
     [Header("Stats")]
-    public int CoinsCollected = 0;
+    public int CoinsCollected = 0;          // Contador de monedas
 
     [Header("Character settings")]
-    public bool isZombie = false;
-    public string uniqueID;
+    public bool isZombie = false;          // Está infectado?
+    public string uniqueID;                // ID único del jugador
 
     [Header("Movement Settings")]
-    public float moveSpeed = 5f;
-    public float zombieSpeedModifier = 0.8f;
-    public Animator animator;
+    public float moveSpeed = 5f;             // Velocidad normal
+    public float zombieSpeedModifier = 0.8f; // Reducción de velocidad si es zombie
+    public Animator animator;                // Animador del personaje
+
 
     // Volvemos a exponer cameraTransform para LevelManager u otros
     [HideInInspector]
@@ -32,11 +33,13 @@ public class PlayerController : NetworkBehaviour
 
     private void Awake()
     {
+        // Buscar el LevelManager
         _levelManager = GameObject.Find("LevelManager").GetComponent<LevelManager>();
     }
 
     private void Start()
     {
+        // Obtener referencia al texto de monedas en la UI
         var canvas = GameObject.Find("CanvasPlayer");
         if (canvas != null)
         {
@@ -63,6 +66,7 @@ public class PlayerController : NetworkBehaviour
                     cc.player = transform;
             }
 
+            // Activar input solo en el propietario
             GetComponent<PlayerInput>().enabled = true;
         }
 
@@ -77,6 +81,7 @@ public class PlayerController : NetworkBehaviour
 
         if (_serverMoveDir.sqrMagnitude > 0.01f)
         {
+            // Rotar hacia la dirección del movimiento
             var targetRot = Quaternion.LookRotation(_serverMoveDir);
             transform.rotation = Quaternion.RotateTowards(
                 transform.rotation,
@@ -84,12 +89,14 @@ public class PlayerController : NetworkBehaviour
                 _rotSpeed * Time.fixedDeltaTime
             );
 
+            // Mover al personaje
             float speed = isZombie ? moveSpeed * zombieSpeedModifier : moveSpeed;
             transform.Translate(_serverMoveDir * speed * Time.fixedDeltaTime, Space.World);
             animator.SetFloat("Speed", speed);
         }
         else
         {
+            // Parar animación si no hay movimiento
             animator.SetFloat("Speed", 0f);
         }
     }
@@ -101,11 +108,14 @@ public class PlayerController : NetworkBehaviour
         Vector2 input2D = ctx.ReadValue<Vector2>();
         if (cameraTransform == null) return;
 
+        // Calcular dirección en base a la orientación de la cámara
         Vector3 camF = cameraTransform.forward; camF.y = 0;
         Vector3 camR = cameraTransform.right; camR.y = 0;
         Vector3 dir = (camF * input2D.y + camR * input2D.x).normalized;
 
         animator.SetFloat("Speed", dir.magnitude * moveSpeed);
+
+        // Enviar dirección al servidor
         SendMoveDirectionServerRpc(dir);
     }
 
@@ -117,6 +127,7 @@ public class PlayerController : NetworkBehaviour
 
     public void CoinCollected()
     {
+        // Solo sumar monedas si no es zombie
         if (!isZombie)
         {
             CoinsCollected++;

@@ -8,18 +8,19 @@ using UnityEngine.UI;
 
 public class GameManager : NetworkBehaviour
 {
+    // Número de humanos y zombis permitidos
     int numHumans;
     int numZombies;
 
     public GameObject humanoPrefab;
     public GameObject zombiePrefab;
 
+    // Listas de jugadores sincronizadas en red
     private NetworkList<ulong> humanList = new NetworkList<ulong>();
     private NetworkList<ulong> zombieList = new NetworkList<ulong>();
-
     private NetworkList<ulong> readyPlayersList = new NetworkList<ulong>();
 
-
+    // Lista local para jugadores aún no spawneados
     private List<ulong> jugadoresPendientes = new List<ulong>();
     private bool partidaIniciada = false;
 
@@ -31,6 +32,7 @@ public class GameManager : NetworkBehaviour
 
     [SerializeField] private GameObject panelNombre;
 
+    // Último tipo de jugador asignado (0: zombie, 1: humano)
     public NetworkVariable<int> lastTypePlayer =
         new NetworkVariable<int>(
              1,
@@ -41,7 +43,7 @@ public class GameManager : NetworkBehaviour
     [SerializeField] private TMP_InputField inputFieldNumJugadores;
 
 
-    // Esto sincroniza el modo de juego a todos los clientes.
+    // Sincroniza el modo de juego a todos los clientes
     public NetworkVariable<GameMode> SelectedGameMode =
         new NetworkVariable<GameMode>(
              GameMode.None,
@@ -62,6 +64,7 @@ public class GameManager : NetworkBehaviour
         if (panelNombre != null)
             panelNombre.SetActive(true);
 
+        // Inicializa el número de humanos y zombis
         numHumans = _levelManager.GetNumHumans();
         numZombies = _levelManager.GetNumZombies();
     }
@@ -73,6 +76,7 @@ public class GameManager : NetworkBehaviour
             panelNombre.SetActive(false);
     }
 
+    // Actualiza el número de jugadores humanos y zombis
     public void OnNumPlayersChange(int numero)
     {
         numHumans = numero;
@@ -102,8 +106,6 @@ public class GameManager : NetworkBehaviour
                 TryStartMatchIfReady();
 
             };
-
-            //////////////////////////
         }
     }
 
@@ -121,6 +123,7 @@ public class GameManager : NetworkBehaviour
         }
     }
 
+    // Asigna equipo al nuevo cliente y lo añade a la lista de espera
     private void OnClientConnected(ulong clientId)
     {
         if (!IsServer || partidaIniciada)
@@ -150,7 +153,7 @@ public class GameManager : NetworkBehaviour
 
         jugadoresPendientes.Add(clientId);
 
-        // Tras asignar equipos, intentamos arrancar
+        // Tras asignar equipos, intentamos arrancar partida
         TryStartMatchIfReady();
     }
 
@@ -198,7 +201,7 @@ public class GameManager : NetworkBehaviour
         }
 
         jugadoresPendientes.Clear();
-        // avisamos a todos los clientes de que empiece el juego!
+        // Avisamos a todos los clientes de que empiece el juego!
         StartGameClientRpc(SelectedGameMode.Value);
     }
 
@@ -211,6 +214,7 @@ public class GameManager : NetworkBehaviour
             lm.StartGame(mode);
     }
 
+    // Asigna equipo al jugador dependiendo del estado actual
     private string AsignarEquipo(ulong clientId)
     {
         if (humanList.Count >= numHumans && zombieList.Count >= numZombies)
@@ -218,7 +222,7 @@ public class GameManager : NetworkBehaviour
             if(humanList.Count == numHumans && zombieList.Count == numZombies)
             {
                 Debug.Log("Equipos recién completados");
-                lastTypePlayer.Value = 1; //para que si o si el siguiente sea zombie
+                lastTypePlayer.Value = 1; // Para que el siguiente sea zombie
                 return "ninguno";
 
             }
@@ -241,6 +245,7 @@ public class GameManager : NetworkBehaviour
             return "human";
         }
 
+        // Asignación aleatoria si hay espacio en ambos equipos
         if (UnityEngine.Random.value < 0.5f)
         {
             humanList.Add(clientId);
@@ -257,6 +262,7 @@ public class GameManager : NetworkBehaviour
         }
     }
 
+    // Devuelve el punto de aparición según el equipo y el índice
     private Vector3 GetSpawnPoint(string equipo, ulong clientId)
     {
         int index = 0;
@@ -280,6 +286,7 @@ public class GameManager : NetworkBehaviour
         Debug.Log($"Me han asignado al equipo: {equipo}");
     }
 
+    // Limpieza de suscripciones
     private void OnDisable()
     {
         if (IsServer)

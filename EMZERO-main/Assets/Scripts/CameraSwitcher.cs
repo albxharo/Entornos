@@ -90,6 +90,7 @@ public class CameraSwitcher : MonoBehaviour
 
     private void PerformTransition()
     {
+        // Mueve y rota suavemente la cámara hacia la vista objetivo
         mainCamera.transform.position = Vector3.Lerp(
             mainCamera.transform.position,
             targetPosition,

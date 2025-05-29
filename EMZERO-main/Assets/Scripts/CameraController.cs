@@ -28,11 +28,12 @@ public class CameraController : MonoBehaviour
     void OnDestroy()
     {
         if (NetworkManager.Singleton != null)
-            NetworkManager.Singleton.OnClientConnectedCallback -= OnClientConnected;
+            NetworkManager.Singleton.OnClientConnectedCallback -= OnClientConnected; // Evitar referencias al destruir el objeto
     }
 
     private void OnClientConnected(ulong clientId)
     {
+        // Solo intentamos asignar si es el cliente local
         if (clientId == NetworkManager.Singleton.LocalClientId)
         {
             TryAssignPlayer();
@@ -41,6 +42,7 @@ public class CameraController : MonoBehaviour
 
     void TryAssignPlayer()
     {
+        // Buscamos todos los PlayerController en escena y asignamos al que es del cliente local
         foreach (var playerObject in FindObjectsOfType<PlayerController>())
         {
             if (playerObject.IsOwner)
@@ -72,8 +74,8 @@ public class CameraController : MonoBehaviour
             return;
         }
 
-        HandleCameraRotation();
-        UpdateCameraPosition();
+        HandleCameraRotation(); // Gestiona la rotación de cámara según input
+        UpdateCameraPosition(); // Actualiza la posición de la cámara en la escena
     }
 
     private void HandleCameraRotation()
