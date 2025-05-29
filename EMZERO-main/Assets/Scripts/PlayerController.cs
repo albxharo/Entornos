@@ -14,6 +14,7 @@ public class PlayerController : NetworkBehaviour
     [Header("Character settings")]
     public bool isZombie = false;            // Está infectado?
     public string uniqueID;                  // ID único del jugador
+    public bool isOriginalZombie = false;    //Para diferenciar los zombies del principio de la partida de los humanos convertidos
 
     [Header("Movement Settings")]
     public float moveSpeed = 5f;             // Velocidad normal

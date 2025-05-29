@@ -192,6 +192,9 @@ public class GameManager : NetworkBehaviour
             GameObject player = Instantiate(prefab, GetSpawnPoint(equipo, clientId), Quaternion.identity);
             player.GetComponent<NetworkObject>().SpawnAsPlayerObject(clientId);
 
+            if (equipo == "zombie")
+                player.GetComponent<PlayerController>().isOriginalZombie = true;
+
             Debug.Log($"Jugador {clientId} spawneado como {equipo}");
 
             EnviarEquipoClientRpc(equipo, new ClientRpcParams

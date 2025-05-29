@@ -28,6 +28,7 @@ public class ZombieCollisionHandler : NetworkBehaviour
                 if (levelManager != null)
                 {
                     levelManager.ChangeToZombie(targetObject.gameObject, true);
+                    levelManager.CheckEndGameCondition(); // Nueva comprobación
                 }
             }
         }

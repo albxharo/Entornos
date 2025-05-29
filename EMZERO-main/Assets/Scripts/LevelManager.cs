@@ -175,6 +175,7 @@ public class LevelManager : NetworkBehaviour
             HandleCoinBasedGameMode();
         }
 
+        //borrar luego
         if (Input.GetKeyDown(KeyCode.Z)) // Presiona "Z" para convertirte en Zombie
         {
             // Comprobar si el jugador actual está usando el prefab de humano
@@ -190,6 +191,7 @@ public class LevelManager : NetworkBehaviour
         }
         else if (Input.GetKeyDown(KeyCode.H)) // Presiona "H" para convertirte en Humano
         {
+        
             // Comprobar si el jugador actual está usando el prefab de zombie
             GameObject currentPlayer = GameObject.FindGameObjectWithTag("Player");
             if (currentPlayer != null && currentPlayer.name.Contains(zombiePrefab.name))
@@ -202,6 +204,12 @@ public class LevelManager : NetworkBehaviour
             }
         }
         UpdateTeamUI();
+
+        if (numberOfHumans == 0 && !isGameOver)
+        {
+            isGameOver = true;
+            ShowGameOverPanelCustom();
+        }
 
         if (isGameOver)
         {
@@ -600,6 +608,59 @@ public class LevelManager : NetworkBehaviour
 
         };
     }
+
+    private void ShowGameOverPanelCustom()
+    {
+        if (!IsServer) return;
+
+        foreach (var client in NetworkManager.Singleton.ConnectedClientsList)
+        {
+            var player = client.PlayerObject;
+            if (player == null) continue;
+
+            var pc = player.GetComponent<PlayerController>();
+            if (pc == null) continue;
+
+            string msg;
+            if (pc.isZombie)
+                msg = pc.isOriginalZombie ? "¡Victoria total para zombis originales!" : "¡Victoria parcial para zombis convertidos!";
+            else
+                msg = "Has sido el último humano. Derrota.";
+
+            ShowGameOverClientRpc(msg, new ClientRpcParams
+            {
+                Send = new ClientRpcSendParams
+                {
+                    TargetClientIds = new[] { pc.OwnerClientId }
+                }
+            });
+        }
+    }
+
+    [ClientRpc]
+    private void ShowGameOverClientRpc(string mensaje, ClientRpcParams rpcParams = default)
+    {
+        Time.timeScale = 0f;
+        gameOverPanel.SetActive(true);
+
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
+
+        var text = gameOverPanel.GetComponentInChildren<TMPro.TextMeshProUGUI>();
+        if (text != null)
+            text.text = mensaje;
+    }
+
+
+    public void CheckEndGameCondition()
+    {
+        if (numberOfHumans == 0 && !isGameOver)
+        {
+            isGameOver = true;
+            ShowGameOverPanelCustom();
+        }
+    }
+
 
 }
 
