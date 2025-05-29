@@ -5,12 +5,12 @@ using UnityEngine;
 public class GameModeSelector : NetworkBehaviour
 {
     public GameObject panel; // Panel de selección de modo
-    private GameManager gm;
+    private StartGameVariables sgVariables;
 
     private void Awake()
     {
-        gm = FindObjectOfType<GameManager>(); // Referencia al GameManager en escena
-        Debug.Log($"[Selector] Awake ▶ gm es null? {gm == null}");
+        sgVariables = FindObjectOfType<StartGameVariables>(); // Referencia al startvariables en escena
+        Debug.Log($"[Selector] Awake ▶ gm es null? {sgVariables == null}");
     }
 
     public override void OnNetworkSpawn()
@@ -24,17 +24,18 @@ public class GameModeSelector : NetworkBehaviour
     {
         // El Host selecciona el modo de juego de tiempo
         Debug.Log("[Selector] Pulsado TimeButton ▶ IsHost=" + IsHost);
-        if (IsHost && gm != null)
-            gm.SelectGameModeServerRpc(GameMode.Tiempo);
+        if (IsHost && sgVariables != null)
+            sgVariables.SelectGameModeServerRpc(GameMode.Tiempo);
         panel.SetActive(false); // Oculta el panel tras seleccionar
+        
     }
 
     public void OnCoinButton()
     {
         // El Host selecciona el modo de juego de monedas
         Debug.Log("[Selector] Pulsado CoinButton ▶ IsHost=" + IsHost);
-        if (IsHost && gm != null)
-            gm.SelectGameModeServerRpc(GameMode.Monedas);
+        if (IsHost && sgVariables != null)
+            sgVariables.SelectGameModeServerRpc(GameMode.Monedas);
         panel.SetActive(false); // Oculta el panel tras seleccionar
     }
 }

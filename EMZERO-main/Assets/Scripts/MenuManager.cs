@@ -7,15 +7,18 @@ using Unity.Netcode.Transports.UTP;           // UnityTransport (si lo usas)
 
 public class MenuManager : MonoBehaviour
 {
+    public GameObject uiManager;
 
     public void Awake()
     {
         Time.timeScale = 1f; // Asegúrate de que el tiempo está restaurado al cargar la escena
+
     }
 
     public void StartGame()
     {
-        SceneManager.LoadScene("GameScene");
+        //SceneManager.LoadScene("GameScene");
+        uiManager.SetActive(true);
     }
 
    

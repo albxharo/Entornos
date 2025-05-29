@@ -42,8 +42,7 @@ public class LevelManager : NetworkBehaviour
     private List<Vector3> humanSpawnPoints = new List<Vector3>();
     private List<Vector3> zombieSpawnPoints = new List<Vector3>();
 
-    [SerializeField] private GameObject panelNumJugadores;
-    [SerializeField] private TMP_InputField inputFieldNumJugadores;
+
 
     // Referencias a los elementos de texto en el canvas
     private TextMeshProUGUI humansText;
@@ -73,11 +72,7 @@ public class LevelManager : NetworkBehaviour
     public GameObject GO_gameManager;
     private GameManager gameManager;
 
-    public NetworkVariable<int> numJugadores = new NetworkVariable<int>(
-             0,
-            NetworkVariableReadPermission.Everyone,
-            NetworkVariableWritePermission.Server
-        );
+
 
     #endregion
 
@@ -101,6 +96,8 @@ public class LevelManager : NetworkBehaviour
     private void Start()
     {
         Debug.Log("Iniciando el nivel");
+        numberOfHumans = StartGameVariables.Instance.humanList.Count;
+        numberOfZombies = StartGameVariables.Instance.zombieList.Count;
         // Buscar el objeto "CanvasPlayer" en la escena
         GameObject canvas = GameObject.Find("CanvasPlayer");
         if (canvas != null)
@@ -487,32 +484,6 @@ public class LevelManager : NetworkBehaviour
             Cursor.visible = true; // Hace visible el cursor
         }
     }
-    public void SetNumPlayers()
-    {
-        Debug.Log("Recibido el input field");
-        if (IsHost)
-        {
-            string texto = inputFieldNumJugadores.text;
-
-
-            if (int.TryParse(texto, out int numero))
-            {
-                SetNumPlayersRpc(numero);
-
-
-                panelNumJugadores.SetActive(false);
-            }
-            else
-            {
-                Debug.LogWarning("Entrada inválida. Asegúrate de introducir un número.");
-            }
-        }
-    }
-
-    private void SetNumPlayersRpc(int numero)
-    {
-        numJugadores.Value = numero;
-    }
 
     public void ReturnToMainMenu()
     {
@@ -551,24 +522,12 @@ public class LevelManager : NetworkBehaviour
 
     }
 
-    public int GetNumHumans()
-    {
-        return numJugadores.Value;
-    }
-
-    public int GetNumZombies()
-    {
-        return numJugadores.Value;
-    }
-
-
-
     // Exponer para el RPC
     public void StartGame(GameMode mode)
     {
-        Debug.Log($"[LevelManager] StartGame() → modo={mode}");
+       /* Debug.Log($"[LevelManager] StartGame() → modo={mode}");
         gameMode = mode;
-        partidaIniciada = true;
+        partidaIniciada = true;*/
         SetupUIForMode(mode);
     }
 
@@ -593,12 +552,12 @@ public class LevelManager : NetworkBehaviour
 
     public override void OnNetworkSpawn()
     {
-        panelNumJugadores.SetActive(IsHost);
+        /*panelNumJugadores.SetActive(IsHost);
         numJugadores.OnValueChanged += (oldNumber, newNumber) =>
         {
             gameManager.OnNumPlayersChange(newNumber);
 
-        };
+        };*/
     }
 
 }

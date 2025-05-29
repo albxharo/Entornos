@@ -1,4 +1,4 @@
-using System.Collections;
+Ôªøusing System.Collections;
 using System.Collections.Generic;
 using Unity.Netcode;
 using UnityEngine;
@@ -6,7 +6,7 @@ using TMPro;
 
 public class UIManager : MonoBehaviour
 {
-    // Singleton: solo habr· una instancia accesible desde cualquier parte
+    // Singleton: solo habr√° una instancia accesible desde cualquier parte
     public static UIManager Instance;
 
     [SerializeField] private NetworkManager _NetworkManager;
@@ -26,7 +26,7 @@ public class UIManager : MonoBehaviour
 
     private void Awake()
     {
-        // ImplementaciÛn del patrÛn Singleton
+        // Implementaci√≥n del patr√≥n Singleton
         if (Instance == null)
         {
             Instance = this;
@@ -44,18 +44,18 @@ public class UIManager : MonoBehaviour
         panelNick.SetActive(false);
         panelModoJuego.SetActive(false);
 
-        // SuscripciÛn al evento cuando un cliente se conecta
+        // Suscripci√≥n al evento cuando un cliente se conecta
         NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnected;
     }
 
     private void OnDestroy()
     {
-        // Elimina la suscripciÛn para evitar errores al destruir el objeto
+        // Elimina la suscripci√≥n para evitar errores al destruir el objeto
         if (NetworkManager.Singleton != null)
             NetworkManager.Singleton.OnClientConnectedCallback -= OnClientConnected;
     }
 
-    // Se llama autom·ticamente cuando un cliente se conecta
+    // Se llama autom√°ticamente cuando un cliente se conecta
     private void OnClientConnected(ulong clientId)
     {
         // Solo queremos mostrar el panel al cliente local
@@ -66,7 +66,7 @@ public class UIManager : MonoBehaviour
         }
     }
 
-    // Muestra el panel de selecciÛn de nickname
+    // Muestra el panel de selecci√≥n de nickname
     public void MostrarPanelNick()
     {
         currentNick = idGenerator.GenerateUniqueID();
@@ -96,7 +96,7 @@ public class UIManager : MonoBehaviour
         }
     }
 
-    // BotÛn que el host pulsa para iniciar la partida
+    // Bot√≥n que el host pulsa para iniciar la partida
     public void ElegirModoDeJuego()
     {
         panelModoJuego.SetActive(false);
@@ -114,17 +114,18 @@ public class UIManager : MonoBehaviour
     }
 
     // Debug GUI para iniciar host, cliente o servidor
+    // Debug GUI para iniciar host, cliente o servidor
     private void OnGUI()
     {
         GUILayout.BeginArea(new Rect(10, 10, 300, 300));
 
         if (!_NetworkManager.IsClient && !_NetworkManager.IsServer)
         {
-            StartButtons(); // Si a˙n no hay conexiÛn, muestra botones para iniciar
+            StartButtons(); // Si a√∫n no hay conexi√≥n, muestra botones para iniciar
         }
         else
         {
-            StatusLabels(); // Si ya hay conexiÛn, muestra el estado
+            StatusLabels(); // Si ya hay conexi√≥n, muestra el estado
         }
 
         GUILayout.EndArea();
