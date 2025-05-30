@@ -8,19 +8,18 @@ public class DetectPlayerCollision : NetworkBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
-        // 1) Sólo nos interesa si choca con un PlayerController
+        
         if (!other.TryGetComponent<PlayerController>(out var pc))
             return;
-
-       
-
-        // 3) Feedback inmediato: sonido local
         AudioSource.PlayClipAtPoint(pickupSound, transform.position);
 
-        // 4) Pedimos al servidor que añada la moneda a este jugador
-       // pc.AddCoinServerRpc();
+        var levelManager = FindObjectOfType<LevelManager>();
+        if (levelManager != null)
+        {
+            levelManager.CheckEndGameCondition(); // Nueva comprobación
+        }
 
-        // 5) Pedimos al servidor que despawnee la moneda en red
+        // pedimos al servidor que despawnee la moneda en red
         SubmitPickupServerRpc();
     }
 
@@ -30,5 +29,12 @@ public class DetectPlayerCollision : NetworkBehaviour
         var no = GetComponent<NetworkObject>();
         if (no != null && no.IsSpawned)
             no.Despawn();
+
+        // ¡Aquí incrementamos el contador!
+        var lm = FindObjectOfType<LevelManager>();
+        if (lm != null)
+        {
+            lm.coinsCollected.Value += 1;
+        }
     }
 }

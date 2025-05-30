@@ -45,36 +45,6 @@ public class GameManager : NetworkBehaviour
 
     }
 
-
-
-
-
-
-    /*
-    private void ApproveConnection(NetworkManager.ConnectionApprovalRequest request, NetworkManager.ConnectionApprovalResponse response)
-    {
-        bool hayHueco = humanList.Count < numHumans || zombieList.Count < numZombies;
-
-        response.Approved = hayHueco;
-        response.CreatePlayerObject = false;
-        response.Pending = false;
-
-        if (!hayHueco)
-        {
-            Debug.Log("Conexión rechazada: equipos completos.");
-        }
-    }*/
-
-    
-
-    // ServerRpc público para que el Host lo invoque al elegir en UI
-    /*[ServerRpc(RequireOwnership = false)]
-    public void SelectGameModeServerRpc(GameMode mode)
-    {
-        SelectedGameMode.Value = mode;
-        // No llamamos aquí directamente a IniciarPartida: 
-        // lo hará TryStartMatchIfReady si ya están todos conectados.
-    }*/
     private void IniciarPartida()
     {
         Debug.Log("Todos los jugadores listos. Iniciando partida...");
@@ -173,13 +143,7 @@ public class GameManager : NetworkBehaviour
         }
     }
 
-    /* private  void OnDestroy()
-     {
-         if (IsServer)
-         {
-             NetworkManager.SceneManager.OnLoadComplete -= OnSceneLoadComplete;
-         }
-     }*/
+    
 
     [ClientRpc]
     private void EnviarEquipoClientRpc(string equipo, ClientRpcParams rpcParams = default)
@@ -187,6 +151,6 @@ public class GameManager : NetworkBehaviour
         Debug.Log($"Me han asignado al equipo: {equipo}");
     }
 
-    // Limpieza de suscripciones
+    
 
 }
