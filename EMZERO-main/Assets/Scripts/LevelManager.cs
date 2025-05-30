@@ -65,7 +65,9 @@ public class LevelManager : NetworkBehaviour
 
     private PlayerController playerController;
 
+    [SerializeField]
     private float remainingSeconds;
+
     private bool isGameOver = false;
     private ulong? ultimoHumanoId = null;
 
@@ -211,7 +213,7 @@ public class LevelManager : NetworkBehaviour
         if (numberOfHumans == 0 && !isGameOver)
         {
             isGameOver = true;
-            ShowGameOverPanelCustom();
+            ShowGameOverZombiesWin();
         }
 
         if (isGameOver)
@@ -378,8 +380,8 @@ public class LevelManager : NetworkBehaviour
         // Comprobar si el tiempo ha llegado a cero
         if (remainingSeconds <= 0)
         {
-            isGameOver = true;
             remainingSeconds = 0;
+            CheckEndGameCondition();
         }
 
         // Convertir remainingSeconds a minutos y segundos
@@ -519,7 +521,7 @@ public class LevelManager : NetworkBehaviour
 
 
 
-    private void ShowGameOverPanelCustom()
+    private void ShowGameOverZombiesWin()
     {
         if (!IsServer) return;
 
@@ -546,6 +548,29 @@ public class LevelManager : NetworkBehaviour
             {
                 msg = "Derrota.";
             }
+
+            ShowGameOverClientRpc(msg, new ClientRpcParams
+            {
+                Send = new ClientRpcSendParams
+                {
+                    TargetClientIds = new[] { pc.OwnerClientId }
+                }
+            });
+        }
+    }
+
+    private void ShowGameOverHumansWin()
+    {
+        if (!IsServer) return;
+
+        foreach (var client in NetworkManager.Singleton.ConnectedClientsList)
+        {
+            var pc = client.PlayerObject?.GetComponent<PlayerController>();
+            if (pc == null) continue;
+
+            string msg = pc.isZombie
+                ? "¡Derrota de los zombis!\nAlgunos humanos han sobrevivido."
+                : "¡Victoria de los humanos!\nHas sobrevivido hasta el final.";
 
             ShowGameOverClientRpc(msg, new ClientRpcParams
             {
@@ -593,7 +618,13 @@ public class LevelManager : NetworkBehaviour
             if (numberOfHumans == 0 && !isGameOver)
             {
                 isGameOver = true;
-                ShowGameOverPanelCustom();
+                ShowGameOverZombiesWin();
+            }
+
+            if (remainingSeconds <= 0 && numberOfHumans > 0 && !isGameOver)
+            {
+                isGameOver = true;
+                ShowGameOverHumansWin(); 
             }
         }
         else if(gameMode == GameMode.Monedas)
