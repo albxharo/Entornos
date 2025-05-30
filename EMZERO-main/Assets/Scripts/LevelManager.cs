@@ -39,8 +39,8 @@ public class LevelManager : NetworkBehaviour
     [Tooltip("Tiempo de partida en minutos para el modo tiempo")]
     [SerializeField] private int minutes = 5;
 
-    private List<Vector3> humanSpawnPoints = new List<Vector3>();
-    private List<Vector3> zombieSpawnPoints = new List<Vector3>();
+    public List<Vector3> humanSpawnPoints = new List<Vector3>();
+    public List<Vector3> zombieSpawnPoints = new List<Vector3>();
 
 
 
@@ -512,7 +512,7 @@ public class LevelManager : NetworkBehaviour
         }
 
         Debug.LogWarning("Índice de spawn fuera de rango. Se usará el primer punto.");
-        return humanSpawnPoints[0]; // O alguna posición por defecto    }
+        return Vector3.zero;
 
 
     }
@@ -525,9 +525,9 @@ public class LevelManager : NetworkBehaviour
         }
 
         Debug.LogWarning("Índice de spawn fuera de rango. Se usará el primer punto.");
-        return zombieSpawnPoints[0]; // O alguna posición por defecto    }
+        return Vector3.zero;
 
-#endregion
+        #endregion
 
     }
 

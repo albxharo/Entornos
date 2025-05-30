@@ -15,8 +15,7 @@ public class GameManager : NetworkBehaviour
     public GameObject zombiePrefab;
 
 
-    // Lista local para jugadores aún no spawneados
-    //private bool partidaIniciada = false;
+  
 
     private GameObject _GOlevelManager;
     private LevelManager _levelManager;
@@ -35,7 +34,7 @@ public class GameManager : NetworkBehaviour
 
 
 
-   // private bool gameModeChosen = false;
+  
 
     private void Awake()
     {
@@ -48,11 +47,7 @@ public class GameManager : NetworkBehaviour
 
 
 
-    public void Start()
-    {
-        //NetworkManager.SceneManager.OnLoad += IniciarPartida();
-        IniciarPartida();
-    }
+
 
 
     /*
@@ -82,7 +77,6 @@ public class GameManager : NetworkBehaviour
     }*/
     private void IniciarPartida()
     {
-        //partidaIniciada = true;
         Debug.Log("Todos los jugadores listos. Iniciando partida...");
 
 
@@ -149,20 +143,43 @@ public class GameManager : NetworkBehaviour
         if (sceneName == "GameScene") // Asegúrate de usar el nombre correcto
         {
             // Verificamos si todos han cargado
-            if (NetworkManager.ConnectedClientsIds.Count == StartGameVariables.Instance.jugadoresPendientes.Count)
+            if (NetworkManager.ConnectedClientsIds.Count == StartGameVariables.Instance.jugadoresPendientes.Count && StartGameVariables.Instance.jugadoresPendientes.Count!=0 && StartGameVariables.Instance.SelectedGameMode.Value != GameMode.None  )
             {
-                IniciarPartida(); // Aquí sí puedes spawnear a todos
+                // En lugar de lanzar IniciarPartida() directamente...
+                StartCoroutine(WaitAndStartMatch());
             }
         }
     }
 
-   /* private  void OnDestroy()
+    private IEnumerator WaitAndStartMatch()
     {
-        if (IsServer)
+        // Buscamos el LevelManager de la escena
+        var lm = FindObjectOfType<LevelManager>();
+        // Esperamos hasta que LevelManager.Build() haya corrido y las listas estén llenas
+        yield return new WaitUntil(() =>
+            lm != null
+            && lm.zombieSpawnPoints.Count > 0
+            && lm.humanSpawnPoints.Count > 0
+        );
+
+        // Ahora comprobamos de nuevo que todos los clientes están listos
+        int connected = NetworkManager.ConnectedClientsIds.Count;
+        int pending = StartGameVariables.Instance.jugadoresPendientes.Count;
+        var mode = StartGameVariables.Instance.SelectedGameMode.Value;
+
+        if (pending != 0 && connected == pending && mode != GameMode.None)
         {
-            NetworkManager.SceneManager.OnLoadComplete -= OnSceneLoadComplete;
+            IniciarPartida();
         }
-    }*/
+    }
+
+    /* private  void OnDestroy()
+     {
+         if (IsServer)
+         {
+             NetworkManager.SceneManager.OnLoadComplete -= OnSceneLoadComplete;
+         }
+     }*/
 
     [ClientRpc]
     private void EnviarEquipoClientRpc(string equipo, ClientRpcParams rpcParams = default)

@@ -45,8 +45,9 @@ public class LevelBuilder : MonoBehaviour
 
     private int CoinsGenerated = 0;
 
-    private HashSet<Vector3> humanSpawnPoints = new HashSet<Vector3>();
-    private HashSet<Vector3> zombieSpawnPoints = new HashSet<Vector3>();
+    private List<Vector3> humanSpawnPoints = new List<Vector3>();
+    private List<Vector3> zombieSpawnPoints = new List<Vector3>();
+
 
     // Lista de posiciones candidatas para monedas
     private List<Vector3> coinPositions = new List<Vector3>();
@@ -72,9 +73,9 @@ public class LevelBuilder : MonoBehaviour
     public void Build()
     {
         CoinsGenerated = 0;
-        humanSpawnPoints.Clear();
-        zombieSpawnPoints.Clear();
-        coinPositions.Clear();
+        //humanSpawnPoints.Clear();
+        //zombieSpawnPoints.Clear();
+        //coinPositions.Clear();
 
         CreateRooms(roomWidth, roomLength, numberOfRooms);
     }
@@ -94,13 +95,19 @@ public class LevelBuilder : MonoBehaviour
                 CreateRoom(width, length, x, z);
 
                 Vector3 spawnPoint = new Vector3(x + width / 2f, 2f, z + length / 2f);
-                if (i % 2 == 0 && j % 2 == 0)
+                // Ejemplo: alternar por iteración
+                if ((i * cols + j) % 2 == 0)
                     humanSpawnPoints.Add(spawnPoint);
                 else
                     zombieSpawnPoints.Add(spawnPoint);
+
             }
         }
-
+        // Después de CreateRooms, si alguna lista está vacía, añade un fallback:
+        if (zombieSpawnPoints.Count == 0)
+            zombieSpawnPoints.Add(humanSpawnPoints[0] + new Vector3(1, 0, 0));  // o cualquier posición válida
+        if (humanSpawnPoints.Count == 0)
+            humanSpawnPoints.Add(zombieSpawnPoints[0] + new Vector3(2, 0, 0));
         CreateExterior(rows, cols, width, length);
     }
 

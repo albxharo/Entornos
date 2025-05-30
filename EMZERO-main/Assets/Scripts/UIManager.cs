@@ -41,8 +41,8 @@ public class UIManager : MonoBehaviour
     private void Start()
     {
         // Oculta los paneles al inicio
-        panelNick.SetActive(false);
-        panelModoJuego.SetActive(false);
+        //panelNick.SetActive(false);
+        //panelModoJuego.SetActive(false);
 
         // Suscripción al evento cuando un cliente se conecta
         NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnected;

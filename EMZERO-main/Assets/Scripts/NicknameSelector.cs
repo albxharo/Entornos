@@ -9,12 +9,11 @@ public class NicknameSelector : NetworkBehaviour
     public TMP_Text nicknameText;              // Texto donde se muestra el nick
     public Button generateButton;              // Botón para generar nuevo nick
     public Button confirmButton;               // Botón para confirmar el nick
-
     public StartGameVariables startVariables;
     [SerializeField] public GameObject GO_startVariables;
 
     public GameObject GO_panelReady;
-    public string  currentNickname;
+    public string currentNickname;
 
     private void Awake()
     {
@@ -22,6 +21,7 @@ public class NicknameSelector : NetworkBehaviour
     }
     void Start()
     {
+
         // Asignar listeners a los botones
         generateButton.onClick.AddListener(GenerateNickname);
         confirmButton.onClick.AddListener(ConfirmNickname);

@@ -7,17 +7,21 @@ public class GameModeSelector : NetworkBehaviour
     public GameObject panel; // Panel de selección de modo
     private StartGameVariables sgVariables;
 
-    private void Awake()
+     private void Awake()
     {
-        sgVariables = FindObjectOfType<StartGameVariables>(); // Referencia al startvariables en escena
-        //Debug.Log($"[Selector] Awake ▶ gm es null? {sgVariables == null}");
+        sgVariables = FindObjectOfType<StartGameVariables>();
+
     }
 
     public override void OnNetworkSpawn()
     {
         // Solo el Host verá el panel de selección
         Debug.Log($"[Selector] OnNetworkSpawn ▶ IsHost={IsHost}, panel activo={IsHost}");
-        panel.SetActive(IsHost);
+        // Desactivar todos los hijos del panel
+        foreach (Transform hijo in panel.transform)
+        {
+            hijo.gameObject.SetActive(IsHost);
+        }
     }
 
     public void OnTimeButton()
@@ -26,8 +30,11 @@ public class GameModeSelector : NetworkBehaviour
         Debug.Log("[Selector] Pulsado TimeButton ▶ IsHost=" + IsHost);
         if (IsHost && sgVariables != null)
             sgVariables.SelectGameModeServerRpc(GameMode.Tiempo);
-        panel.SetActive(false); // Oculta el panel tras seleccionar
-        
+        // Desactivar todos los hijos del panel
+        foreach (Transform hijo in panel.transform)
+        {
+            hijo.gameObject.SetActive(false);
+        }
     }
 
     public void OnCoinButton()
@@ -36,6 +43,9 @@ public class GameModeSelector : NetworkBehaviour
         Debug.Log("[Selector] Pulsado CoinButton ▶ IsHost=" + IsHost);
         if (IsHost && sgVariables != null)
             sgVariables.SelectGameModeServerRpc(GameMode.Monedas);
-        panel.SetActive(false); // Oculta el panel tras seleccionar
+        foreach (Transform hijo in panel.transform)
+        {
+            hijo.gameObject.SetActive(false);
+        }
     }
 }

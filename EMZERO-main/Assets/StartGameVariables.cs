@@ -7,7 +7,6 @@ using UnityEngine;
 
 public class StartGameVariables : NetworkBehaviour
 {
-    public static StartGameVariables Instance;
 
     private bool partidaIniciada = false;
     private bool gameModeChosen = false;
@@ -54,6 +53,7 @@ public class StartGameVariables : NetworkBehaviour
     
 
     public List<ulong> jugadoresPendientes = new List<ulong>();
+    public static StartGameVariables Instance { get; private set; }
 
 
     private void Awake()
