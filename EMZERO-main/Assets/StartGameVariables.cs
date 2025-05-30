@@ -83,10 +83,11 @@ public class StartGameVariables : NetworkBehaviour
         {
             string texto = inputFieldNumJugadores.text;
 
-            if (int.TryParse(texto, out int numero))
+            if (int.TryParse(texto, out int numero) && numero > 1)
             {
                 SetNumPlayersRpc(numero);
                 panelNumJugadores.SetActive(false);
+                readycanvas.SetActive(true);
             }
             else
             {
