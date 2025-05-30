@@ -149,10 +149,10 @@ public class LevelManager : NetworkBehaviour
         // Obtener los puntos de aparición y el número de monedas generadas desde LevelBuilder
         if (levelBuilder != null)
         {
+            
             levelBuilder.Build();
             humanSpawnPoints = levelBuilder.GetHumanSpawnPoints();
             zombieSpawnPoints = levelBuilder.GetZombieSpawnPoints();
-            CoinsGenerated = levelBuilder.GetCoinsGenerated();
         }
 
 
@@ -395,11 +395,13 @@ public class LevelManager : NetworkBehaviour
     {
         if (isGameOver) return;
 
+        CoinsGenerated = levelBuilder.GetCoinsGenerated();
+
         // Implementar la lógica para el modo de juego basado en monedas
         if (timeModeText != null && playerController != null)
         {
             timeModeText.text = $"{playerController.CoinsCollected}/{CoinsGenerated}";
-            if (playerController.CoinsCollected == CoinsGenerated)
+            if (playerController.CoinsCollected >= CoinsGenerated)
             {
                 isGameOver = true;
             }
@@ -590,7 +592,7 @@ public class LevelManager : NetworkBehaviour
         }
         else if(gameMode == GameMode.Monedas)
         {
-            isGameOver = true;
+            
 
             if (coinsCollected.Value >= CoinsGenerated && !isGameOver)
             {

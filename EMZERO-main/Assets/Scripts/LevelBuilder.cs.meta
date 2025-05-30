@@ -3,7 +3,13 @@ guid: 6c4d3630996180f4f84dba42e6cacd78
 MonoImporter:
   externalObjects: {}
   serializedVersion: 2
-  defaultReferences: []
+  defaultReferences:
+  - cornerPrefab: {instanceID: 0}
+  - wallPrefab: {instanceID: 0}
+  - doorPrefab: {instanceID: 0}
+  - doorHolePrefab: {instanceID: 0}
+  - exteriorPrefab: {instanceID: 0}
+  - coinPrefab: {fileID: 4991860089593518421, guid: 1732822753d02b8478d46ed30d6a93bc, type: 3}
   executionOrder: 0
   icon: {instanceID: 0}
   userData: 

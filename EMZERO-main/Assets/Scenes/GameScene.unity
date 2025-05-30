@@ -2049,6 +2049,8 @@ MonoBehaviour:
   zombieSpawnPoints: []
   gameOverPanel: {fileID: 861340988}
   GO_gameManager: {fileID: 782628375}
+  coinsCollected:
+    m_InternalValue: 0
 --- !u!4 &1720106049
 Transform:
   m_ObjectHideFlags: 0
@@ -2122,7 +2124,7 @@ MonoBehaviour:
   roomWidth: 9
   roomLength: 9
   "\xEDtemsDensity": 20
-  coinsDensity: 20
+  coinsDensity: 1
 --- !u!114 &1720106053
 MonoBehaviour:
   m_ObjectHideFlags: 0

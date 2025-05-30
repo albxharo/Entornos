@@ -1,81 +1,95 @@
+ï»¿using System;
 using System.Collections.Generic;
 using System.Linq;
+using Unity.Netcode;
 using UnityEngine;
 
 /// <summary>
-/// Clase para generar el nivel del juego, incluyendo suelos, paredes, ítems decorativos y el borde exterior.
-/// Las monedas se generan por separado llamando a SpawnCoins().
+/// Clase para generar el nivel del juego de forma determinista usando un seed.
+/// Suelos, muros, Ã­tems, puertas y monedas se generan idÃ©nticamente en servidor y clientes.
 /// </summary>
-public class LevelBuilder : MonoBehaviour
+public class LevelBuilder : NetworkBehaviour
 {
+    #region Network y Seed
+
+    // Semilla compartida por Netcode
+    private NetworkVariable<int> levelSeed = new NetworkVariable<int>(
+        writePerm: NetworkVariableWritePermission.Server,
+        readPerm: NetworkVariableReadPermission.Everyone
+    );
+
+    #endregion
+
     #region Properties
 
     [Header("Prefabs")]
-    [Tooltip("Array con los prefabs de suelo")]
     [SerializeField] private GameObject[] floorPrefabs;
-    [Tooltip("Array con los prefabs de ítems decorativos")]
     [SerializeField] private GameObject[] obstaclesPrefabs;
-    [Tooltip("Prefab para las esquinas")]
     [SerializeField] private GameObject cornerPrefab;
-    [Tooltip("Prefab para los muros")]
     [SerializeField] private GameObject wallPrefab;
-    [Tooltip("Prefab para las puertas")]
     [SerializeField] private GameObject doorPrefab;
-    [Tooltip("Prefab para el trozo de muro que incluye puerta")]
     [SerializeField] private GameObject doorHolePrefab;
-    [Tooltip("Prefab para el borde exterior")]
     [SerializeField] private GameObject exteriorPrefab;
-    [Tooltip("Prefab para las monedas")]
     [SerializeField] public GameObject coinPrefab;
 
     [Header("Room Settings")]
-    [Tooltip("Número total de salas")]
     [SerializeField] private int numberOfRooms = 1;
-    [Tooltip("Ancho de cada sala")]
     [SerializeField] private int roomWidth = 5;
-    [Tooltip("Largo de cada sala")]
     [SerializeField] private int roomLength = 5;
-    [Tooltip("Densidad de elementos decorativos [%]")]
-    [SerializeField] private float ítemsDensity = 20f;
-    [Tooltip("Densidad de monedas [%]")]
-    [SerializeField] private float coinsDensity = 20f;
+    [SerializeField] private float Ã­temsDensity = 20f;
+    [SerializeField] private float coinsDensity = 1f;
 
     private readonly float tileSize = 1.0f;
     private Transform roomParent;
 
     private int CoinsGenerated = 0;
-
     private List<Vector3> humanSpawnPoints = new List<Vector3>();
     private List<Vector3> zombieSpawnPoints = new List<Vector3>();
-
-
-    // Lista de posiciones candidatas para monedas
     private List<Vector3> coinPositions = new List<Vector3>();
 
     #endregion
 
-    #region Unity game loop methods
+    #region Unity callbacks
 
     private void Awake()
     {
-        // Creamos un padre para mantener todo ordenado
         GameObject parentObject = new GameObject("RoomsParent");
         roomParent = parentObject.transform;
     }
 
+    public override void OnNetworkSpawn()
+    {
+        if (IsServer)
+        {
+            // El servidor elige y comparte el seed
+            int seed = UnityEngine.Random.Range(int.MinValue, int.MaxValue);
+            levelSeed.Value = seed;
+            // Construye localmente tras fijar el seed
+            Build();
+        }
+        else
+        {
+            // Clientes esperan al seed y luego construyen
+            levelSeed.OnValueChanged += (_, newSeed) => Build();
+        }
+    }
+
     #endregion
 
-    #region World building methods
+    #region World building
 
     /// <summary>
-    /// Genera la estructura del nivel sin monedas.
+    /// Genera la estructura del nivel (sin monedas) usando el seed compartido.
     /// </summary>
     public void Build()
     {
+        // Reiniciamos PRNG con seed
+        UnityEngine.Random.InitState(levelSeed.Value);
+
         CoinsGenerated = 0;
-        //humanSpawnPoints.Clear();
-        //zombieSpawnPoints.Clear();
-        //coinPositions.Clear();
+        humanSpawnPoints.Clear();
+        zombieSpawnPoints.Clear();
+        coinPositions.Clear();
 
         CreateRooms(roomWidth, roomLength, numberOfRooms);
     }
@@ -89,25 +103,25 @@ public class LevelBuilder : MonoBehaviour
         {
             for (int j = 0; j < cols; j++)
             {
-                float x = j * roomWidth;
-                float z = i * roomLength;
+                float x = j * width;
+                float z = i * length;
 
                 CreateRoom(width, length, x, z);
 
-                Vector3 spawnPoint = new Vector3(x + width / 2f, 2f, z + length / 2f);
-                // Ejemplo: alternar por iteración
+                var spawnPoint = new Vector3(x + width / 2f, 2f, z + length / 2f);
                 if ((i * cols + j) % 2 == 0)
                     humanSpawnPoints.Add(spawnPoint);
                 else
                     zombieSpawnPoints.Add(spawnPoint);
-
             }
         }
-        // Después de CreateRooms, si alguna lista está vacía, añade un fallback:
+
+        // Fallbacks si faltan spawn points
         if (zombieSpawnPoints.Count == 0)
-            zombieSpawnPoints.Add(humanSpawnPoints[0] + new Vector3(1, 0, 0));  // o cualquier posición válida
+            zombieSpawnPoints.Add(humanSpawnPoints[0] + Vector3.right);
         if (humanSpawnPoints.Count == 0)
-            humanSpawnPoints.Add(zombieSpawnPoints[0] + new Vector3(2, 0, 0));
+            humanSpawnPoints.Add(zombieSpawnPoints[0] + Vector3.right * 2);
+
         CreateExterior(rows, cols, width, length);
     }
 
@@ -122,21 +136,25 @@ public class LevelBuilder : MonoBehaviour
         for (int x = 0; x < width; x++)
             for (int z = 0; z < length; z++)
             {
-                // Selección aleatoria de terreno
-                var floor = floorPrefabs[Random.Range(0, floorPrefabs.Length)];
-                Vector3 pos = new Vector3(x * tileSize + offsetX, 0, z * tileSize + offsetZ);
-                Instantiate(floor, pos, Quaternion.identity, roomParent);
+                var pos = new Vector3(x * tileSize + offsetX, 0, z * tileSize + offsetZ);
 
-                // Obstáculos decorativos
+                // Suelo
+                var floorPrefab = floorPrefabs[UnityEngine.Random.Range(0, floorPrefabs.Length)];
+                InstantiateNetworked(floorPrefab, pos);
+
+                // ObstÃ¡culo
                 if (ShouldPlaceItem(x, z, width, length))
                 {
-                    var obs = obstaclesPrefabs[Random.Range(0, obstaclesPrefabs.Length)];
-                    Instantiate(obs, pos, Quaternion.identity, roomParent).tag = "Obstacle";
+                    var obs = InstantiateNetworked(
+                        obstaclesPrefabs[UnityEngine.Random.Range(0, obstaclesPrefabs.Length)],
+                        pos
+                    );
+                    obs.tag = "Obstacle";
                 }
-
-                // Registramos posición de moneda candidata
-                if (ShouldPlaceCoin(x, z, width, length))
-                    coinPositions.Add(pos);
+                else if (ShouldPlaceCoin(x, z, width, length))
+                {
+                    coinPositions.Add(pos + Vector3.up * 0.5f);
+                }
             }
     }
 
@@ -152,87 +170,119 @@ public class LevelBuilder : MonoBehaviour
         int dpX = (width - 1) / 2, dpZ = (length - 1) / 2;
         for (int i = 1; i < width - 1; i++)
         {
-            // Inferior / Superior
-            if (i == dpX) { Place(doorPrefab, i * tileSize + offsetX, offsetZ); Place(doorHolePrefab, i * tileSize + offsetX, offsetZ); }
-            else Place(wallPrefab, i * tileSize + offsetX, offsetZ);
+            // Inferior
+            if (i == dpX)
+                Place(doorPrefab, i * tileSize + offsetX, offsetZ);
+            else
+                Place(wallPrefab, i * tileSize + offsetX, offsetZ);
 
-            if (i == dpX) { Place(doorPrefab, i * tileSize + offsetX, (length - 1) * tileSize + offsetZ, Quaternion.Euler(0, 180, 0)); Place(doorHolePrefab, i * tileSize + offsetX, (length - 1) * tileSize + offsetZ); }
-            else Place(wallPrefab, i * tileSize + offsetX, (length - 1) * tileSize + offsetZ);
+            // Superior
+            if (i == dpX)
+                Place(doorPrefab, i * tileSize + offsetX, (length - 1) * tileSize + offsetZ, Quaternion.Euler(0, 180, 0));
+            else
+                Place(wallPrefab, i * tileSize + offsetX, (length - 1) * tileSize + offsetZ);
         }
         for (int i = 1; i < length - 1; i++)
         {
-            // Izquierda / Derecha
-            if (i == dpZ) { Place(doorPrefab, offsetX, i * tileSize + offsetZ, Quaternion.Euler(0, 90, 0)); Place(doorHolePrefab, offsetX, i * tileSize + offsetZ, Quaternion.Euler(0, 90, 0)); }
-            else Place(wallPrefab, offsetX, i * tileSize + offsetZ, Quaternion.Euler(0, 90, 0));
+            // Izquierda
+            if (i == dpZ)
+                Place(doorPrefab, offsetX, i * tileSize + offsetZ, Quaternion.Euler(0, 90, 0));
+            else
+                Place(wallPrefab, offsetX, i * tileSize + offsetZ, Quaternion.Euler(0, 90, 0));
 
-            if (i == dpZ) { Place(doorPrefab, (width - 1) * tileSize + offsetX, i * tileSize + offsetZ, Quaternion.Euler(0, 270, 0)); Place(doorHolePrefab, (width - 1) * tileSize + offsetX, i * tileSize + offsetZ, Quaternion.Euler(0, 270, 0)); }
-            else Place(wallPrefab, (width - 1) * tileSize + offsetX, i * tileSize + offsetZ, Quaternion.Euler(0, 90, 0));
+            // Derecha
+            if (i == dpZ)
+                Place(doorPrefab, (width - 1) * tileSize + offsetX, i * tileSize + offsetZ, Quaternion.Euler(0, 270, 0));
+            else
+                Place(wallPrefab, (width - 1) * tileSize + offsetX, i * tileSize + offsetZ, Quaternion.Euler(0, 270, 0));
         }
     }
 
     private void CreateExterior(int rows, int cols, int width, int length)
     {
         float minX = -tileSize, maxX = cols * width, minZ = -tileSize, maxZ = rows * length;
-        for (float x = minX; x <= maxX; x += tileSize) { Place(exteriorPrefab, x, minZ); Place(exteriorPrefab, x, maxZ); }
-        for (float z = minZ; z < maxZ; z += tileSize) { Place(exteriorPrefab, minX, z); Place(exteriorPrefab, maxX, z); }
+        for (float x = minX; x <= maxX; x += tileSize)
+        {
+            Place(exteriorPrefab, x, minZ);
+            Place(exteriorPrefab, x, maxZ);
+        }
+        for (float z = minZ; z < maxZ; z += tileSize)
+        {
+            Place(exteriorPrefab, minX, z);
+            Place(exteriorPrefab, maxX, z);
+        }
     }
 
-    private void Place(GameObject prefab, float x, float z, Quaternion rot = default)
-    {
-        Instantiate(prefab, new Vector3(x, 0, z), rot, roomParent);
-    }
+    #endregion
 
-    
+    #region Spawn de monedas
+
     public void SpawnCoins()
     {
-        if (!Unity.Netcode.NetworkManager.Singleton.IsServer)
+        if (!IsServer)
         {
             Debug.LogWarning("Solo el servidor debe ejecutar SpawnCoins()");
             return;
         }
 
-        foreach (var pos in coinPositions)
+        int totalSlots = coinPositions.Count;
+        int toSpawn = Mathf.CeilToInt(totalSlots * (coinsDensity / 100f));
+        toSpawn = Mathf.Clamp(toSpawn, 1, totalSlots);
+
+        var indices = Enumerable.Range(0, totalSlots)
+                                .OrderBy(_ => UnityEngine.Random.value)
+                                .Take(toSpawn);
+
+        foreach (int i in indices)
         {
-            // 1) Instanciamos la moneda localmente
-            var coinInstance = Instantiate(coinPrefab, pos, Quaternion.identity, roomParent);
-            // 2) Obtenemos su NetworkObject
-            var no = coinInstance.GetComponent<Unity.Netcode.NetworkObject>();
-            if (no == null)
-            {
+            Vector3 pos = coinPositions[i];
+            var coin = InstantiateNetworked(coinPrefab, pos + Vector3.up * 0.5f);
+            if (coin.GetComponent<NetworkObject>() == null)
                 Debug.LogError("coinPrefab NO tiene NetworkObject!");
-                continue;
-            }
-            // 3) Y la spawnemos en red
-            no.Spawn();
-            CoinsGenerated++;
+            else
+                CoinsGenerated++;
         }
+
         Debug.Log($"Monedas instanciadas en red: {CoinsGenerated}");
     }
-
-
-    #endregion
-
-    #region Public methods
-
-    public List<Vector3> GetHumanSpawnPoints() => humanSpawnPoints.ToList();
-    public List<Vector3> GetZombieSpawnPoints() => zombieSpawnPoints.ToList();
-    public int GetCoinsGenerated() => CoinsGenerated;
 
     #endregion
 
     #region Helpers
 
+    private GameObject InstantiateNetworked(GameObject prefab, Vector3 pos, Quaternion rot = default)
+    {
+        var go = Instantiate(prefab, pos, rot, roomParent);
+        var netObj = go.GetComponent<NetworkObject>();
+        if (IsServer && netObj != null)
+            netObj.Spawn();
+        return go;
+    }
+
+    private void Place(GameObject prefab, float x, float z, Quaternion rot = default)
+    {
+        InstantiateNetworked(prefab, new Vector3(x, 0, z), rot);
+    }
+
     private bool ShouldPlaceItem(int x, int z, int w, int l)
     {
         bool inside = x > 0 && x < w - 1 && z > 0 && z < l - 1;
-        return inside && Random.Range(0f, 100f) < ítemsDensity;
+        return inside && UnityEngine.Random.Range(0f, 100f) < Ã­temsDensity;
     }
 
     private bool ShouldPlaceCoin(int x, int z, int w, int l)
     {
         bool inside = x > 0 && x < w - 1 && z > 0 && z < l - 1;
-        return inside && Random.Range(0f, 100f) < coinsDensity;
+        return inside && UnityEngine.Random.Range(0f, 100f) < coinsDensity;
     }
+
+    #endregion
+
+    #region Accesores pÃºblicos
+
+    public List<Vector3> GetHumanSpawnPoints() => humanSpawnPoints.ToList();
+    public List<Vector3> GetZombieSpawnPoints() => zombieSpawnPoints.ToList();
+    public int GetCoinsGenerated() => CoinsGenerated;
 
     #endregion
 }
