@@ -68,6 +68,12 @@ public class StartGameVariables : NetworkBehaviour
         {
             Destroy(gameObject); // Elimina duplicados
         }
+
+        // Aquí inicializamos TODAS las NetworkList ANTES de cualquier spawn:
+        humanList = new NetworkList<ulong>();
+        zombieList = new NetworkList<ulong>();
+        readyPlayersList = new NetworkList<ulong>();
+        playersNames = new NetworkList<FixedString4096Bytes>();
     }
 
     public void SetNumPlayers()
@@ -227,10 +233,7 @@ public class StartGameVariables : NetworkBehaviour
             };
 
 
-            humanList = new NetworkList<ulong>();
-            zombieList = new NetworkList<ulong>();
-            readyPlayersList = new NetworkList<ulong>();
-            playersNames = new NetworkList<FixedString4096Bytes>();
+           
 
             
         }
