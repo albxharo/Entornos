@@ -4,6 +4,7 @@ using System.Linq;
 using Unity.Netcode;
 using UnityEngine;
 
+
 /// <summary>
 /// Clase para generar el nivel del juego de forma determinista usando un seed.
 /// Suelos, muros, ítems, puertas y monedas se generan idénticamente en servidor y clientes.
@@ -33,7 +34,7 @@ public class LevelBuilder : NetworkBehaviour
     [SerializeField] public GameObject coinPrefab;
 
     [Header("Room Settings")]
-    [SerializeField] private int numberOfRooms = 1;
+    private int numberOfRooms = 4;
     [SerializeField] private int roomWidth = 5;
     [SerializeField] private int roomLength = 5;
     [SerializeField] private float ítemsDensity = 20f;
@@ -153,7 +154,8 @@ public class LevelBuilder : NetworkBehaviour
                 }
                 else if (ShouldPlaceCoin(x, z, width, length))
                 {
-                    coinPositions.Add(pos + Vector3.up * 0.5f);
+                    // Guardamos la posición fija en y = 0.1
+                    coinPositions.Add(new Vector3(pos.x, 0.1f, pos.z));
                 }
             }
     }
@@ -232,15 +234,17 @@ public class LevelBuilder : NetworkBehaviour
         var indices = Enumerable.Range(0, totalSlots)
                                 .OrderBy(_ => UnityEngine.Random.value)
                                 .Take(toSpawn);
-
         foreach (int i in indices)
         {
+            // Usamos la posición guardada, ya con y = -0.8
             Vector3 pos = coinPositions[i];
-            var coin = InstantiateNetworked(coinPrefab, pos + Vector3.up * 0.5f);
-            if (coin.GetComponent<NetworkObject>() == null)
+            var coin = InstantiateNetworked(coinPrefab, pos);
+                        if (coin.GetComponent<NetworkObject>() == null)
+                            {
                 Debug.LogError("coinPrefab NO tiene NetworkObject!");
-            else
-                CoinsGenerated++;
+                                continue;
+                            }
+            CoinsGenerated++;
         }
 
         Debug.Log($"Monedas instanciadas en red: {CoinsGenerated}");

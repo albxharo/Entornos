@@ -43,6 +43,9 @@ public class LevelManager : NetworkBehaviour
     public List<Vector3> zombieSpawnPoints = new List<Vector3>();
 
 
+    public NetworkVariable<int> totalCoins = new NetworkVariable<int>(0,
+        writePerm: NetworkVariableWritePermission.Server);
+
 
     // Referencias a los elementos de texto en el canvas
     private TextMeshProUGUI humansText;
@@ -395,7 +398,7 @@ public class LevelManager : NetworkBehaviour
     {
         if (isGameOver) return;
 
-        CoinsGenerated = levelBuilder.GetCoinsGenerated();
+        
 
         // Implementar la lógica para el modo de juego basado en monedas
         if (timeModeText != null && playerController != null)
@@ -410,6 +413,7 @@ public class LevelManager : NetworkBehaviour
 
     private void OnCoinsChanged(int oldValue, int newValue)
     {
+
         // Actualiza la UI en cada cliente
         if (coinValueText != null)
             coinValueText.text = $"{newValue}/{CoinsGenerated}";
@@ -477,7 +481,9 @@ public class LevelManager : NetworkBehaviour
         if (mode == GameMode.Monedas)
         {
             levelBuilder.SpawnCoins();
-            CoinsGenerated = levelBuilder.GetCoinsGenerated();
+            totalCoins.Value = levelBuilder.GetCoinsGenerated();
+            coinsCollected.Value = 0;
+
         }
 
 
