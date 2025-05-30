@@ -64,6 +64,7 @@ public class LevelBuilder : NetworkBehaviour
             // El servidor elige y comparte el seed
             int seed = UnityEngine.Random.Range(int.MinValue, int.MaxValue);
             levelSeed.Value = seed;
+
             // Construye localmente tras fijar el seed
             Build();
         }
@@ -90,7 +91,7 @@ public class LevelBuilder : NetworkBehaviour
         humanSpawnPoints.Clear();
         zombieSpawnPoints.Clear();
         coinPositions.Clear();
-
+        numberOfRooms = StartGameVariables.Instance.numTotalPlayers.Value;
         CreateRooms(roomWidth, roomLength, numberOfRooms);
     }
 

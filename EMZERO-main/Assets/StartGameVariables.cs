@@ -50,7 +50,13 @@ public class StartGameVariables : NetworkBehaviour
             NetworkVariableWritePermission.Server
         );
 
-    
+    // Numero total de jugadores
+    public NetworkVariable<int> numTotalPlayers =
+        new NetworkVariable<int>(
+             1,
+            NetworkVariableReadPermission.Everyone,
+            NetworkVariableWritePermission.Server
+        );
 
     public List<ulong> jugadoresPendientes = new List<ulong>();
     public static StartGameVariables Instance { get; private set; }
@@ -83,7 +89,7 @@ public class StartGameVariables : NetworkBehaviour
         {
             string texto = inputFieldNumJugadores.text;
 
-            if (int.TryParse(texto, out int numero) && numero > 1)
+            if (int.TryParse(texto, out int numero) && numero > 0)
             {
                 SetNumPlayersRpc(numero);
                 panelNumJugadores.SetActive(false);
@@ -106,7 +112,7 @@ public class StartGameVariables : NetworkBehaviour
     {
         if (!IsServer || partidaIniciada)
             return;
-
+        numTotalPlayers.Value++;
         string equipo = AsignarEquipo(clientId);
         //GuardarNombre();
 
@@ -145,7 +151,7 @@ public class StartGameVariables : NetworkBehaviour
         //  1) Teams completos, y
         //  2) El Host YA ha elegido modo
         if (gameModeChosen
-            && readyPlayersList.Count > ((humanList.Count + zombieList.Count) / 2)
+            && readyPlayersList.Count > (numJugadores.Value)
             && !partidaIniciada)
         {
             for (int i = 0; i < playersNames.Count; i++)
@@ -212,10 +218,19 @@ public class StartGameVariables : NetworkBehaviour
 
 
     [ServerRpc(RequireOwnership = false)]
-    public void GuardarNombreServerRpc(string nickname)
+    public void GuardarNombreServerRpc(string nickname, ServerRpcParams rpcParams = default)
     {
-        playersNames.Add(nickname);
-        Debug.Log($"[Server] Jugador {nickname} está listo.");
+        ulong clientId = rpcParams.Receive.SenderClientId;
+
+        // Rellenar con strings vacíos hasta alcanzar el índice `clientId`
+        while (playersNames.Count <= (int)clientId)
+        {
+            playersNames.Add(new FixedString4096Bytes(""));  // Espacios vacíos
+        }
+
+        playersNames[(int)clientId] = new FixedString4096Bytes(nickname);
+
+        Debug.Log($"[Server] Jugador {clientId} registrado como '{nickname}' en índice {clientId}");
     }
     public override void OnNetworkSpawn()
     {

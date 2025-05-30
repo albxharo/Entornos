@@ -37,15 +37,13 @@ public class NicknameSelector : NetworkBehaviour
 
     void ConfirmNickname()
     {
-        currentNickname += nicknameText.text;
-        // Guardar el nick en las preferencias del jugador
+        currentNickname = nicknameText.text; // Reemplaza el valor, no lo concatenes
         PlayerPrefs.SetString("PlayerNickname", currentNickname);
         Debug.Log("Nickname confirmado: " + currentNickname);
 
-        // Llamar al UIManager para avanzar en la UI
         UIManager.Instance.ConfirmarNick(currentNickname);
-
         startVariables.GuardarNombre(currentNickname);
+
         if (!IsHost)
         {
             GO_panelReady.SetActive(true);
