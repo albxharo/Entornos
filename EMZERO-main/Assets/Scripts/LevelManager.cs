@@ -523,13 +523,25 @@ public class LevelManager : NetworkBehaviour
     }
 
     // Exponer para el RPC
+    // Exponer para el RPC
     public void StartGame(GameMode mode)
     {
-       /* Debug.Log($"[LevelManager] StartGame() → modo={mode}");
+        Debug.Log($"[LevelManager] StartGame() → modo={mode}");
         gameMode = mode;
-        partidaIniciada = true;*/
+        partidaIniciada = true;
+
+
+        if (mode == GameMode.Monedas)
+        {
+            levelBuilder.SpawnCoins();
+            CoinsGenerated = levelBuilder.GetCoinsGenerated();
+        }
+
+
         SetupUIForMode(mode);
     }
+
+
 
     private void SetupUIForMode(GameMode mode)
     {
@@ -541,10 +553,12 @@ public class LevelManager : NetworkBehaviour
         // Ahora sólo activamos los que tocan:
         if (mode == GameMode.Tiempo)
         {
+            Debug.Log("Configurando UI para el modo Tiempo");
             timeModeText.gameObject.SetActive(true);
         }
         else if (mode == GameMode.Monedas)
         {
+            Debug.Log("Configurando UI para el modo Monedas");
             coinLabelText.gameObject.SetActive(true);
             coinValueText.gameObject.SetActive(true);
         }
