@@ -17,9 +17,11 @@ public class StartGameVariables : NetworkBehaviour
     int numZombies;
 
     // Listas de jugadores sincronizadas en red
-    public NetworkList<ulong> humanList = new NetworkList<ulong>();
-    public NetworkList<ulong> zombieList = new NetworkList<ulong>();
-    private NetworkList<ulong> readyPlayersList = new NetworkList<ulong>();
+    public NetworkList<ulong> humanList;
+    public NetworkList<ulong> zombieList;
+    private NetworkList<ulong> readyPlayersList;
+    public NetworkList<FixedString4096Bytes> playersNames;
+
     public GameObject readycanvas;
 
 
@@ -49,7 +51,7 @@ public class StartGameVariables : NetworkBehaviour
             NetworkVariableWritePermission.Server
         );
 
-    public NetworkList<FixedString4096Bytes> playersNames = new NetworkList<FixedString4096Bytes>();
+    
 
     public List<ulong> jugadoresPendientes = new List<ulong>();
 
@@ -223,7 +225,16 @@ public class StartGameVariables : NetworkBehaviour
                 TryStartMatchIfReady();
 
             };
+
+
+            humanList = new NetworkList<ulong>();
+            zombieList = new NetworkList<ulong>();
+            readyPlayersList = new NetworkList<ulong>();
+            playersNames = new NetworkList<FixedString4096Bytes>();
+
+            
         }
+        base.OnNetworkSpawn();
     }
     public void readyButtonPressed()
     {
@@ -252,11 +263,26 @@ public class StartGameVariables : NetworkBehaviour
     }
     public override void OnDestroy()
     {
+        humanList?.Dispose();
+        zombieList?.Dispose();
+        readyPlayersList?.Dispose();
+        playersNames?.Dispose();
         base.OnDestroy();
+
+    }
+
+    public override void OnNetworkDespawn()
+    {
+        // Despawns de Netcode: limpia aquí
         humanList.Dispose();
         zombieList.Dispose();
         readyPlayersList.Dispose();
+        playersNames.Dispose();
+
+        base.OnNetworkDespawn();
     }
+
+    
 
     private void OnDisable()
     {
@@ -265,7 +291,14 @@ public class StartGameVariables : NetworkBehaviour
             //NetworkManager.ConnectionApprovalCallback -= ApproveConnection;
             NetworkManager.OnClientConnectedCallback -= OnClientConnected;
         }
+
+        // Asegura liberación si el GameObject se desactiva
+        humanList.Dispose();
+        zombieList.Dispose();
+        readyPlayersList.Dispose();
+       playersNames.Dispose();
     }
+
 
 
 }

@@ -10,7 +10,7 @@ public class GameModeSelector : NetworkBehaviour
     private void Awake()
     {
         sgVariables = FindObjectOfType<StartGameVariables>(); // Referencia al startvariables en escena
-        Debug.Log($"[Selector] Awake ▶ gm es null? {sgVariables == null}");
+        //Debug.Log($"[Selector] Awake ▶ gm es null? {sgVariables == null}");
     }
 
     public override void OnNetworkSpawn()

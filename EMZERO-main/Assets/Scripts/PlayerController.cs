@@ -37,7 +37,7 @@ public class PlayerController : NetworkBehaviour
     private void Awake()
     {
         // Buscar el LevelManager
-        _levelManager = GameObject.Find("LevelManager").GetComponent<LevelManager>();
+       // _levelManager = GameObject.Find("LevelManager").GetComponent<LevelManager>();
     }
 
     private void Start()
@@ -158,4 +158,6 @@ public class PlayerController : NetworkBehaviour
         if (coinText != null)
             coinText.text = CoinsCollected.ToString();
     }
+
+
 }
