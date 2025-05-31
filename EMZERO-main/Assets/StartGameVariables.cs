@@ -5,6 +5,7 @@ using TMPro;
 using Unity.Collections;
 using Unity.Netcode;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class StartGameVariables : NetworkBehaviour
 {
@@ -23,10 +24,11 @@ public class StartGameVariables : NetworkBehaviour
     public NetworkList<FixedString4096Bytes> playersNames;
 
     public GameObject readycanvas;
-
+    public GameObject GO_readyButton;
 
     [SerializeField] private GameObject panelNumJugadores;
     [SerializeField] private TMP_InputField inputFieldNumJugadores;
+    [SerializeField] public Button readyButton; // Asigna el botón desde el Inspector
 
 
     public NetworkVariable<int> numJugadores = new NetworkVariable<int>(
@@ -87,7 +89,7 @@ public class StartGameVariables : NetworkBehaviour
         readyPlayersList = new NetworkList<ulong>();
         playersNames = new NetworkList<FixedString4096Bytes>();
     }
-
+   
     public void SetNumPlayers()
     {
         Debug.Log("Recibido el input field");
