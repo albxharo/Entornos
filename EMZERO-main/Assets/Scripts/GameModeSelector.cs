@@ -16,7 +16,7 @@ public class GameModeSelector : NetworkBehaviour
     [SerializeField] private TextMeshProUGUI coinDensityLabel;
 
     [SerializeField] private Slider timeDensitySlider;
-    [SerializeField] private TextMeshPro timeDensityLabel;
+    [SerializeField] private TextMeshProUGUI timeDensityLabel;
 
 
     private void Awake()
@@ -52,7 +52,20 @@ public class GameModeSelector : NetworkBehaviour
         {
             hijo.gameObject.SetActive(true);
         }
-    }
+
+        timeDensitySlider = sliderTimePanel.GetComponentInChildren<Slider>();
+        timeDensityLabel = sliderTimePanel.GetComponentInChildren<TextMeshProUGUI>();
+        if (timeDensitySlider != null)
+        {
+            // Inicializa el slider al valor actual
+            timeDensitySlider.minValue = 1f;
+            timeDensitySlider.maxValue = 10f;
+            timeDensitySlider.value = StartGameVariables.Instance.minutes;
+
+            // Cada vez que cambie el slider, actualiza el tiempo
+            timeDensitySlider.onValueChanged.AddListener(SetTime);
+        }
+        }
 
     public void OnConfirmTimeButton()
     {
@@ -61,30 +74,20 @@ public class GameModeSelector : NetworkBehaviour
         {
             hijo.gameObject.SetActive(false);
         }
-        timeDensitySlider = sliderTimePanel.GetComponentInChildren<Slider>();
-        timeDensityLabel = sliderTimePanel.GetComponentInChildren<TextMeshPro>();
-        if (coinDensitySlider != null)
-        {
-            // Inicializa el slider al valor actual
-            timeDensitySlider.minValue = 1f;
-            timeDensitySlider.maxValue = 100f;
-            timeDensitySlider.value = StartGameVariables.Instance.coinsDensity;
-
-            // Cada vez que cambie el slider, actualiza el tiempo
-            timeDensitySlider.onValueChanged.AddListener(SetTime);
-        }
+        
+        
     }
 
     public void SetTime(float value)
     {
-        StartGameVariables.Instance.minutes = (int)value;    
+        StartGameVariables.Instance.minutes =(int) value;    
         UpdateTimeLabel(value);
     }
 
     private void UpdateTimeLabel(float val)
     {
         if (timeDensityLabel != null)
-            timeDensityLabel.text = $"Tiempo de partida: {val:F1}%";
+            timeDensityLabel.text = $"Tiempo de partida: {val:F1} minutos";
     }
 
     #region Coins

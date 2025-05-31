@@ -53,9 +53,6 @@ public class LevelManager : NetworkBehaviour
     private TextMeshProUGUI coinValueText;
     private TextMeshProUGUI coinLabelText;
 
-
-    private int CoinsGenerated = 0;
-
     public string PlayerPrefabName => playerPrefab.name;
     public string ZombiePrefabName => zombiePrefab.name;
 

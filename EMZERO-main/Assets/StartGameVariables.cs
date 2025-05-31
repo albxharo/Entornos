@@ -22,7 +22,7 @@ public class StartGameVariables : NetworkBehaviour
     public NetworkList<FixedString4096Bytes> playersNames;
 
     public float coinsDensity = 20f;
-    public int minutes = 5; 
+    public float minutes = 5f; 
 
 
     public GameObject readycanvas;
