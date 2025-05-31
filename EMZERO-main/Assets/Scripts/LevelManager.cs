@@ -60,8 +60,11 @@ public class LevelManager : NetworkBehaviour
 
     private PlayerController playerController;   // Referencia al controlador del jugador
 
-    [SerializeField]
-    private float remainingSeconds;              // Segundos restantes en modo tiempo
+    public NetworkVariable<float> remainingSeconds = new NetworkVariable<float>(
+     0f,
+     writePerm: NetworkVariableWritePermission.Server,
+     readPerm: NetworkVariableReadPermission.Everyone
+ );           // Segundos restantes en modo tiempo
 
     public bool isGameOver = false;              // Indica si la partida ha terminado
     private ulong? ultimoHumanoId = null;        // ID del ultimo humano antes de conversion
@@ -149,7 +152,7 @@ public class LevelManager : NetworkBehaviour
         }
 
         // Convertir minutos configurados a segundos
-        remainingSeconds = StartGameVariables.Instance.minutes * 60;
+        remainingSeconds.Value = StartGameVariables.Instance.minutes * 60;
 
         // Si existe el LevelBuilder, construir el nivel y obtener puntos de spawn
         if (levelBuilder != null)
@@ -171,8 +174,13 @@ public class LevelManager : NetworkBehaviour
 
         // Dependiendo del modo de juego, llamar a la logica correspondiente
         if (gameMode == GameMode.Tiempo)
-        {
-            HandleTimeLimitedGameMode();
+        {// Sólo el servidor debe restar al temporizador.
+            if (IsServer)
+            {
+                HandleTimeLimitedGameMode();
+            }
+            // Independientemente, todos (host y clientes) deben actualizar el texto en pantalla
+            UpdateTimeUIFromNetworkVariable();
         }
         else if (gameMode == GameMode.Monedas)
         {
@@ -235,6 +243,21 @@ public class LevelManager : NetworkBehaviour
         // Suscribirse a cambios de la variable de red coinsCollected para actualizar UI
         coinsCollected.OnValueChanged += OnCoinsChanged;
     }
+
+  
+
+    private void UpdateTimeUIFromNetworkVariable()
+    {
+        if (timeModeText == null) return;
+
+        // Convertir segundos a mm:ss
+        float segundosTotales = remainingSeconds.Value;
+        int minutosRestantes = Mathf.FloorToInt(segundosTotales / 60f);
+        int segundos = Mathf.FloorToInt(segundosTotales % 60f);
+        timeModeText.text = $"{minutosRestantes:D2}:{segundos:D2}";
+    }
+
+
 
     #region Team management methods
 
@@ -374,18 +397,18 @@ public class LevelManager : NetworkBehaviour
         if (isGameOver) return;
 
         // Reducir remainingSeconds segun tiempo transcurrido
-        remainingSeconds -= Time.deltaTime;
+        remainingSeconds.Value -= Time.deltaTime;
 
         // Comprobar si el tiempo se ha agotado
-        if (remainingSeconds <= 0)
+        if (remainingSeconds.Value <= 0)
         {
-            remainingSeconds = 0;
+            remainingSeconds.Value = 0;
             CheckEndGameCondition();
         }
 
         // Convertir segundos restantes a minutos y segundos
-        int minutesRemaining = Mathf.FloorToInt(remainingSeconds / 60);
-        int secondsRemaining = Mathf.FloorToInt(remainingSeconds % 60);
+        int minutesRemaining = Mathf.FloorToInt(remainingSeconds.Value / 60);
+        int secondsRemaining = Mathf.FloorToInt(remainingSeconds.Value % 60);
 
         // Actualizar texto de tiempo en la UI
         if (timeModeText != null)
@@ -475,15 +498,23 @@ public class LevelManager : NetworkBehaviour
 
         if (mode == GameMode.Monedas)
         {
-            // Si es modo Monedas, spawnear monedas y actualizar totalCoins
             levelBuilder.SpawnCoins();
             totalCoins.Value = levelBuilder.GetCoinsGenerated();
             coinsCollected.Value = 0;
         }
+        else if (mode == GameMode.Tiempo)
+        {
+            // SOLO el servidor asigna el valor inicial de remainingSeconds
+            if (IsServer)
+            {
+                float segundosIniciales = StartGameVariables.Instance.minutes * 60f;
+                remainingSeconds.Value = segundosIniciales;
+            }
+        }
 
-        // Configurar UI segun el modo de juego
         SetupUIForMode(mode);
     }
+
 
     private void SetupUIForMode(GameMode mode)
     {
@@ -616,7 +647,7 @@ public class LevelManager : NetworkBehaviour
             }
 
             // Si se acabo el tiempo y quedan humanos, ganan humanos
-            if (remainingSeconds <= 0 && numberOfHumans > 0 && !isGameOver)
+            if (remainingSeconds.Value <= 0 && numberOfHumans > 0 && !isGameOver)
             {
                 isGameOver = true;
                 ShowGameOverHumansWin();
