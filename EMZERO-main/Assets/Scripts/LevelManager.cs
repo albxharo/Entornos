@@ -53,17 +53,11 @@ public class LevelManager : NetworkBehaviour
     private TextMeshProUGUI coinValueText;  // Texto que muestra valor actual de monedas
     private TextMeshProUGUI coinLabelText;  // Texto que muestra label de monedas
 
-    // Propiedades para obtener nombres de prefabs
-    // Referencias a los elementos de texto en el canvas
-    private TextMeshProUGUI humansText;
-    private TextMeshProUGUI zombiesText;
-    private TextMeshProUGUI timeModeText;
-    private TextMeshProUGUI coinValueText;
-    private TextMeshProUGUI coinLabelText;
+
 
     [SerializeField] private GameObject desconexionText;
 
-    private int CoinsGenerated = 0;
+    
 
     public string PlayerPrefabName => playerPrefab.name;
     public string ZombiePrefabName => zombiePrefab.name;
@@ -257,6 +251,9 @@ public class LevelManager : NetworkBehaviour
 
         //Evento para actualizar  ui segun número de zombies y humanos
         numberOfZombies.OnValueChanged += OnZombiesChanged;
+
+
+
         NetworkManager.OnClientDisconnectCallback += OnClientDisconnected;
 
     }
@@ -266,7 +263,16 @@ public class LevelManager : NetworkBehaviour
         UpdateTeamUI();
     }
 
-  
+    private void OnClientDisconnected(ulong obj)
+    {
+        if (NetworkManager.Singleton.ConnectedClientsList.Count == 1)
+        {
+
+            ShowGameOverPanel();
+            desconexionText.SetActive(true);
+        }
+    }
+
 
     private void UpdateTimeUIFromNetworkVariable()
     {
@@ -331,8 +337,9 @@ public class LevelManager : NetworkBehaviour
             }
 
             numberOfHumans.Value--;
-        numberOfZombies.Value++;
-        UpdateTeamUI();
+            numberOfZombies.Value++;
+            UpdateTeamUI();
+        }
     }
 
     private void ChangeToHuman()
@@ -660,7 +667,7 @@ public class LevelManager : NetworkBehaviour
                 ShowGameOverZombiesWin();
             }
 
-            if (remainingSeconds <= 0 && numberOfHumans.Value > 0 && !isGameOver)
+            if (remainingSeconds.Value <= 0 && numberOfHumans.Value > 0 && !isGameOver)
             {
                 isGameOver = true;
                 ShowGameOverHumansWin();
