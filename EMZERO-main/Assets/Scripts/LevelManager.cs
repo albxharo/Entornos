@@ -27,10 +27,10 @@ public class LevelManager : NetworkBehaviour
 
     [Header("Team Settings")]
     [Tooltip("Número de jugadores humanos")]
-    [SerializeField] private int numberOfHumans = 2;
+    [SerializeField] public NetworkVariable<int>  numberOfHumans = new NetworkVariable<int>(2);
 
     [Tooltip("Número de zombis")]
-    [SerializeField] private int numberOfZombies = 2;
+    [SerializeField] public NetworkVariable<int>   numberOfZombies = new NetworkVariable<int>(2);
 
     [Header("Game Mode Settings")]
     [Tooltip("Selecciona el modo de juego")]
@@ -42,6 +42,7 @@ public class LevelManager : NetworkBehaviour
     public List<Vector3> humanSpawnPoints = new List<Vector3>();
     public List<Vector3> zombieSpawnPoints = new List<Vector3>();
 
+    
 
     public NetworkVariable<int> totalCoins = new NetworkVariable<int>(0,
         writePerm: NetworkVariableWritePermission.Server);
@@ -54,6 +55,7 @@ public class LevelManager : NetworkBehaviour
     private TextMeshProUGUI coinValueText;
     private TextMeshProUGUI coinLabelText;
 
+    [SerializeField] private GameObject desconexionText;
 
     private int CoinsGenerated = 0;
 
@@ -80,6 +82,9 @@ public class LevelManager : NetworkBehaviour
 
 
     public NetworkVariable<int> coinsCollected = new NetworkVariable<int>(0);
+    public NetworkVariable<int> numHumanos = new NetworkVariable<int>();
+    public NetworkVariable<int> numZombies = new NetworkVariable<int>();
+
 
 
 
@@ -105,8 +110,8 @@ public class LevelManager : NetworkBehaviour
     private void Start()
     {
         Debug.Log("Iniciando el nivel");
-        numberOfHumans = StartGameVariables.Instance.humanList.Count;
-        numberOfZombies = StartGameVariables.Instance.zombieList.Count;
+        numberOfHumans.Value = StartGameVariables.Instance.humanList.Count;
+        numberOfZombies.Value = StartGameVariables.Instance.zombieList.Count;
         // Buscar el objeto "CanvasPlayer" en la escena
         GameObject canvas = GameObject.Find("CanvasPlayer");
         if (canvas != null)
@@ -210,7 +215,7 @@ public class LevelManager : NetworkBehaviour
         }
         UpdateTeamUI();
 
-        if (numberOfHumans == 0 && !isGameOver)
+        if (numberOfHumans.Value == 0 && !isGameOver)
         {
             isGameOver = true;
             ShowGameOverZombiesWin();
@@ -219,7 +224,7 @@ public class LevelManager : NetworkBehaviour
         if (isGameOver)
         {
             ShowGameOverPanel();
-        }
+        }//////////////////////////////////////////
     }
 
     #endregion
@@ -235,6 +240,16 @@ public class LevelManager : NetworkBehaviour
 
         // Todos: nos suscribimos a cambios
         coinsCollected.OnValueChanged += OnCoinsChanged;
+
+        //Evento para actualizar  ui segun número de zombies y humanos
+        numberOfZombies.OnValueChanged += OnZombiesChanged;
+        NetworkManager.OnClientDisconnectCallback += OnClientDisconnected;
+
+    }
+
+    private void OnZombiesChanged(int previousValue, int newValue)
+    {
+        UpdateTeamUI();
     }
 
 
@@ -282,8 +297,8 @@ public class LevelManager : NetworkBehaviour
                 }
             }
 
-            numberOfHumans--;
-        numberOfZombies++;
+            numberOfHumans.Value--;
+        numberOfZombies.Value++;
         UpdateTeamUI();
     }
 }
@@ -331,8 +346,8 @@ public class LevelManager : NetworkBehaviour
                     playerController.enabled = true;
                     playerController.cameraTransform = mainCamera.transform;
                     playerController.isZombie = false; // Cambiar el estado a humano
-                    numberOfHumans++; // Aumentar el número de humanos
-                    numberOfZombies--; // Reducir el número de zombis
+                    numberOfHumans.Value++; // Aumentar el número de humanos
+                    numberOfZombies.Value--; // Reducir el número de zombis
                 }
                 else
                 {
@@ -356,12 +371,12 @@ public class LevelManager : NetworkBehaviour
     {
         if (humansText != null)
         {
-            humansText.text = $"{numberOfHumans}";
+            humansText.text = $"{numberOfHumans.Value}";
         }
 
         if (zombiesText != null)
         {
-            zombiesText.text = $"{numberOfZombies}";
+            zombiesText.text = $"{numberOfZombies.Value}";
         }
     }
 
@@ -421,7 +436,7 @@ public class LevelManager : NetworkBehaviour
             coinValueText.text = $"{newValue}/{CoinsGenerated}";
     }
 
-    private void ShowGameOverPanel()
+    public void ShowGameOverPanel()
     {
         if (gameOverPanel != null)
         {
@@ -436,12 +451,8 @@ public class LevelManager : NetworkBehaviour
 
     public void ReturnToMainMenu()
     {
-        // Gestión del cursor
-        Cursor.lockState = CursorLockMode.Locked; // Bloquea el cursor
-        Cursor.visible = false; // Oculta el cursor
+        NetworkManager.SceneManager.LoadScene("MenuScene", UnityEngine.SceneManagement.LoadSceneMode.Single);
 
-        // Cargar la escena del menú principal
-        SceneManager.LoadScene("MenuScene"); // Cambia "MenuScene" por el nombre de tu escena principal
     }
 
     public Vector3 GetHumanSpawnPoint(int index)
@@ -601,7 +612,7 @@ public class LevelManager : NetworkBehaviour
     {
         if ( gameMode== GameMode.Tiempo)
         {
-            if (numberOfHumans == 1)
+            if (numberOfHumans.Value == 1)
             {
                 // Busca y guarda el último humano antes de que se convierta
                 foreach (var client in NetworkManager.Singleton.ConnectedClientsList)
@@ -615,13 +626,13 @@ public class LevelManager : NetworkBehaviour
                 }
             }
 
-            if (numberOfHumans == 0 && !isGameOver)
+            if (numberOfHumans.Value == 0 && !isGameOver)
             {
                 isGameOver = true;
                 ShowGameOverZombiesWin();
             }
 
-            if (remainingSeconds <= 0 && numberOfHumans > 0 && !isGameOver)
+            if (remainingSeconds <= 0 && numberOfHumans.Value > 0 && !isGameOver)
             {
                 isGameOver = true;
                 ShowGameOverHumansWin(); 
@@ -666,6 +677,24 @@ public class LevelManager : NetworkBehaviour
 
 
 
+    }
+
+    private void OnDisable()
+    {
+        if (IsServer)
+        {
+            NetworkManager.OnClientDisconnectCallback -= OnClientDisconnected;
+        }
+    }
+
+    private void OnClientDisconnected(ulong obj)
+    {
+        if (NetworkManager.Singleton.ConnectedClientsList.Count == 1)
+        {
+            
+            ShowGameOverPanel();
+            desconexionText.SetActive(true);
+        }
     }
 
 

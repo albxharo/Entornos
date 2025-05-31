@@ -1,10 +1,14 @@
-﻿using Unity.Netcode;
+﻿using TMPro;
+using Unity.Netcode;
+using Unity.VisualScripting;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class GameModeSelector : NetworkBehaviour
 {
     public GameObject panel; // Panel de selección de modo
+    
     private StartGameVariables sgVariables;
 
      private void Awake()
@@ -35,6 +39,7 @@ public class GameModeSelector : NetworkBehaviour
         {
             hijo.gameObject.SetActive(false);
         }
+
     }
 
     public void OnCoinButton()
@@ -47,5 +52,6 @@ public class GameModeSelector : NetworkBehaviour
         {
             hijo.gameObject.SetActive(false);
         }
+
     }
 }

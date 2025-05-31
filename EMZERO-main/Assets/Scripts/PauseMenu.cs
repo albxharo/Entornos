@@ -1,3 +1,4 @@
+using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -47,8 +48,12 @@ public class PauseMenu : MonoBehaviour
 
     public void QuitGame()
     {
-        // Opcional: Asegúrate de que el tiempo está restaurado antes de salir
         Time.timeScale = 1f;
-        SceneManager.LoadScene("MenuScene"); // Cambia "MainMenu" por el nombre de tu escena principal
+        // Desconectar al cliente si no es el host
+        if (NetworkManager.Singleton.IsClient && !NetworkManager.Singleton.IsHost)
+        {
+            NetworkManager.Singleton.Shutdown();
+        }
+        SceneManager.LoadScene("MenuScene"); 
     }
 }

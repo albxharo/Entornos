@@ -1,6 +1,8 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using Unity.Netcode;
+using UnityEngine.SceneManagement;
+
 using UnityEngine;
 using TMPro;
 
@@ -22,7 +24,7 @@ public class UIManager : MonoBehaviour
     [SerializeField] private UniqueIdGenerator idGenerator;
 
     private string currentNick;
-    private bool hasStartedConnection = false;
+    public bool hasStartedConnection = false;
 
     private void Awake()
     {
@@ -46,6 +48,25 @@ public class UIManager : MonoBehaviour
 
         // Suscripción al evento cuando un cliente se conecta
         NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnected;
+
+    }
+    private void OnEnable()
+    {
+        SceneManager.sceneLoaded += OnSceneLoaded;
+    }
+
+    private void OnDisable()
+    {
+        SceneManager.sceneLoaded -= OnSceneLoaded;
+    }
+
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        if (scene.name == "MenuScene")
+        {
+            hasStartedConnection = false;
+            Debug.Log("Volvimos a MenuScene. hasStartedConnection reiniciado.");
+        }
     }
 
     private void OnDestroy()

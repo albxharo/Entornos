@@ -1,3 +1,4 @@
+ï»¿using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using TMPro;
@@ -11,7 +12,7 @@ public class StartGameVariables : NetworkBehaviour
     private bool partidaIniciada = false;
     private bool gameModeChosen = false;
 
-    // Número de humanos y zombis permitidos
+    // NÃºmero de humanos y zombis permitidos
     int numHumans;
     int numZombies;
 
@@ -33,8 +34,13 @@ public class StartGameVariables : NetworkBehaviour
         NetworkVariableReadPermission.Everyone,
         NetworkVariableWritePermission.Server
     );
+    public NetworkVariable<int> actualPlayers = new NetworkVariable<int>(
+     0,
+    NetworkVariableReadPermission.Everyone,
+    NetworkVariableWritePermission.Server
+);
 
-    // Último tipo de jugador asignado (0: zombie, 1: humano)
+    // Ãšltimo tipo de jugador asignado (0: zombie, 1: humano)
     public NetworkVariable<int> lastTypePlayer =
         new NetworkVariable<int>(
              1,
@@ -75,7 +81,7 @@ public class StartGameVariables : NetworkBehaviour
             Destroy(gameObject); // Elimina duplicados
         }
 
-        // Aquí inicializamos TODAS las NetworkList ANTES de cualquier spawn:
+        // AquÃ­ inicializamos TODAS las NetworkList ANTES de cualquier spawn:
         humanList = new NetworkList<ulong>();
         zombieList = new NetworkList<ulong>();
         readyPlayersList = new NetworkList<ulong>();
@@ -97,7 +103,7 @@ public class StartGameVariables : NetworkBehaviour
             }
             else
             {
-                Debug.LogWarning("Entrada inválida. Asegúrate de introducir un número.");
+                Debug.LogWarning("Entrada invÃ¡lida. AsegÃºrate de introducir un nÃºmero.");
             }
         }
     }
@@ -107,12 +113,12 @@ public class StartGameVariables : NetworkBehaviour
         numJugadores.Value = numero;
     }
 
-    // Asigna equipo al nuevo cliente y lo añade a la lista de espera
+    // Asigna equipo al nuevo cliente y lo aÃ±ade a la lista de espera
     private void OnClientConnected(ulong clientId)
     {
         if (!IsServer || partidaIniciada)
             return;
-        numTotalPlayers.Value++;
+        //numTotalPlayers.Value++;
         string equipo = AsignarEquipo(clientId);
         //GuardarNombre();
 
@@ -147,13 +153,15 @@ public class StartGameVariables : NetworkBehaviour
 
     private void TryStartMatchIfReady()
     {
-        // Sólo lanzar IniciarPartida cuando
+        // SÃ³lo lanzar IniciarPartida cuando
         //  1) Teams completos, y
         //  2) El Host YA ha elegido modo
         if (gameModeChosen
             && readyPlayersList.Count > (numJugadores.Value)
             && !partidaIniciada)
         {
+            numTotalPlayers.Value = jugadoresPendientes.Count;
+            actualPlayers.Value = numTotalPlayers.Value;
             for (int i = 0; i < playersNames.Count; i++)
             {
                 Debug.Log($"Nombre {i}: {playersNames[i].ToString()}");
@@ -171,7 +179,7 @@ public class StartGameVariables : NetworkBehaviour
         {
             if (humanList.Count == numHumans && zombieList.Count == numZombies)
             {
-                Debug.Log("Equipos recién completados");
+                Debug.Log("Equipos reciÃ©n completados");
                 lastTypePlayer.Value = 1; // Para que el siguiente sea zombie
                 return "ninguno";
 
@@ -195,7 +203,7 @@ public class StartGameVariables : NetworkBehaviour
             return "human";
         }
 
-        // Asignación aleatoria si hay espacio en ambos equipos
+        // AsignaciÃ³n aleatoria si hay espacio en ambos equipos
         if (UnityEngine.Random.value < 0.5f)
         {
             humanList.Add(clientId);
@@ -222,15 +230,15 @@ public class StartGameVariables : NetworkBehaviour
     {
         ulong clientId = rpcParams.Receive.SenderClientId;
 
-        // Rellenar con strings vacíos hasta alcanzar el índice `clientId`
+        // Rellenar con strings vacÃ­os hasta alcanzar el Ã­ndice `clientId`
         while (playersNames.Count <= (int)clientId)
         {
-            playersNames.Add(new FixedString4096Bytes(""));  // Espacios vacíos
+            playersNames.Add(new FixedString4096Bytes(""));  // Espacios vacÃ­os
         }
 
         playersNames[(int)clientId] = new FixedString4096Bytes(nickname);
 
-        Debug.Log($"[Server] Jugador {clientId} registrado como '{nickname}' en índice {clientId}");
+        Debug.Log($"[Server] Jugador {clientId} registrado como '{nickname}' en Ã­ndice {clientId}");
     }
     public override void OnNetworkSpawn()
     {
@@ -238,6 +246,8 @@ public class StartGameVariables : NetworkBehaviour
         {
             //NetworkManager.ConnectionApprovalCallback += ApproveConnection;
             NetworkManager.OnClientConnectedCallback += OnClientConnected;
+            NetworkManager.OnClientDisconnectCallback += OnClientDisconnected;
+
 
             // Suscribimos un listener para cuando el servidor cambie el modo
             SelectedGameMode.OnValueChanged += (oldMode, newMode) =>
@@ -255,6 +265,24 @@ public class StartGameVariables : NetworkBehaviour
         }
         base.OnNetworkSpawn();
     }
+
+    private void OnClientDisconnected(ulong clientId)
+    {
+        if (!IsServer || partidaIniciada)
+            return;
+        jugadoresPendientes.Remove(clientId);
+        if (humanList.Contains(clientId))
+        {
+            humanList.Remove(clientId);
+            lastTypePlayer.Value = 0;
+        }
+        else
+        {
+            zombieList.Remove(clientId);
+            lastTypePlayer.Value = 1;
+        }
+    }
+
     public void readyButtonPressed()
     {
         readyButtonpressedServerRpc(OwnerClientId);
@@ -267,18 +295,18 @@ public class StartGameVariables : NetworkBehaviour
     public void readyButtonpressedServerRpc(ulong clientId)
     {
         readyPlayersList.Add(clientId);
-        Debug.Log($"[Server] Jugador {clientId} está listo.");
+        Debug.Log($"[Server] Jugador {clientId} estÃ¡ listo.");
         TryStartMatchIfReady();
 
     }
 
-    // ServerRpc público para que el Host lo invoque al elegir en UI
+    // ServerRpc pÃºblico para que el Host lo invoque al elegir en UI
     [ServerRpc(RequireOwnership = false)]
     public void SelectGameModeServerRpc(GameMode mode)
     {
         SelectedGameMode.Value = mode;
-        // No llamamos aquí directamente a IniciarPartida: 
-        // lo hará TryStartMatchIfReady si ya están todos conectados.
+        // No llamamos aquÃ­ directamente a IniciarPartida: 
+        // lo harÃ¡ TryStartMatchIfReady si ya estÃ¡n todos conectados.
     }
     public override void OnDestroy()
     {
@@ -292,7 +320,7 @@ public class StartGameVariables : NetworkBehaviour
 
     public override void OnNetworkDespawn()
     {
-        // Despawns de Netcode: limpia aquí
+        // Despawns de Netcode: limpia aquÃ­
         humanList.Dispose();
         zombieList.Dispose();
         readyPlayersList.Dispose();
@@ -302,22 +330,5 @@ public class StartGameVariables : NetworkBehaviour
     }
 
     
-
-    private void OnDisable()
-    {
-        if (IsServer)
-        {
-            //NetworkManager.ConnectionApprovalCallback -= ApproveConnection;
-            NetworkManager.OnClientConnectedCallback -= OnClientConnected;
-        }
-
-        // Asegura liberación si el GameObject se desactiva
-        humanList.Dispose();
-        zombieList.Dispose();
-        readyPlayersList.Dispose();
-       playersNames.Dispose();
-    }
-
-
 
 }
