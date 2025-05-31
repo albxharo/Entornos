@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Unity.Netcode;
 using UnityEngine;
 using TMPro;
+using System.Runtime.CompilerServices;
 
 public class UIManager : MonoBehaviour
 {
@@ -73,7 +74,13 @@ public class UIManager : MonoBehaviour
         nickText.text = currentNick;
 
         panelNick.SetActive(true);
-        panelModoJuego.SetActive(false);
+
+        foreach (Transform hijo in panelModoJuego.transform)
+        {
+            hijo.gameObject.SetActive(false);
+        }
+
+        //panelModoJuego.SetActive(false);
     }
 
     // Se llama cuando el jugador confirma su nickname
@@ -87,7 +94,10 @@ public class UIManager : MonoBehaviour
         // Solo el host ve el panel de elegir modo de juego
         if (NetworkManager.Singleton.IsHost)
         {
-            panelModoJuego.SetActive(true);
+            foreach (Transform hijo in panelModoJuego.transform)
+            {
+                hijo.gameObject.SetActive(true);
+            }
             Debug.Log("Host: mostrando panelModoJuego");
         }
         else

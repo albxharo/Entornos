@@ -5,6 +5,7 @@ using Unity.Netcode;
 using UnityEngine;
 
 
+
 /// <summary>
 /// Clase para generar el nivel del juego de forma determinista usando un seed.
 /// Suelos, muros, ítems, puertas y monedas se generan idénticamente en servidor y clientes.
@@ -38,7 +39,7 @@ public class LevelBuilder : NetworkBehaviour
     [SerializeField] private int roomWidth = 5;
     [SerializeField] private int roomLength = 5;
     [SerializeField] private float ítemsDensity = 20f;
-    [SerializeField] private float coinsDensity = 1f;
+    public float coinsDensity ;
 
     private readonly float tileSize = 1.0f;
     private Transform roomParent;
@@ -47,6 +48,9 @@ public class LevelBuilder : NetworkBehaviour
     private List<Vector3> humanSpawnPoints = new List<Vector3>();
     private List<Vector3> zombieSpawnPoints = new List<Vector3>();
     private List<Vector3> coinPositions = new List<Vector3>();
+
+
+
 
     #endregion
 
@@ -58,6 +62,7 @@ public class LevelBuilder : NetworkBehaviour
         roomParent = parentObject.transform;
     }
 
+ 
     public override void OnNetworkSpawn()
     {
         if (IsServer)
@@ -78,6 +83,12 @@ public class LevelBuilder : NetworkBehaviour
 
     #endregion
 
+
+    
+
+
+
+
     #region World building
 
     /// <summary>
@@ -85,6 +96,7 @@ public class LevelBuilder : NetworkBehaviour
     /// </summary>
     public void Build()
     {
+        coinsDensity = StartGameVariables.Instance.coinsDensity  ;
         // Reiniciamos PRNG con seed
         UnityEngine.Random.InitState(levelSeed.Value);
 

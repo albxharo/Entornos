@@ -21,6 +21,9 @@ public class StartGameVariables : NetworkBehaviour
     private NetworkList<ulong> readyPlayersList;
     public NetworkList<FixedString4096Bytes> playersNames;
 
+    public float coinsDensity = 20f;
+
+
     public GameObject readycanvas;
 
 
