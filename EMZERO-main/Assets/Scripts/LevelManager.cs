@@ -454,14 +454,49 @@ public class LevelManager : NetworkBehaviour
         }
     }
 
+    // Llamado en tu UI cuando el jugador pulsa "Volver al Menú"
     public void ReturnToMainMenu()
     {
-        // Bloquear e invisibilizar cursor antes de cambiar de escena
+        // Versión LOCAL: (NO nos sirve en red)
+        // Cursor.lockState = CursorLockMode.Locked;
+        // Cursor.visible = false;
+        // SceneManager.LoadScene("MenuScene");
+
+        // Versión CORRECTA en red:
+        if (!IsServer)
+        {
+            // Si soy un cliente, pido permiso al servidor para cambiar de escena
+            AskServerToReturnToMenuServerRpc();
+        }
+        else
+        {
+            // Si soy el host/servidor, puedo invocar directamente la carga
+            ReturnToMenuAsServer();
+        }
+    }
+
+    // Este ServerRpc lo podrá invocar cualquier cliente (RequireOwnership = false),
+    // para que el servidor cargue la escena en todos.
+    [ServerRpc(RequireOwnership = false)]
+    private void AskServerToReturnToMenuServerRpc(ServerRpcParams rpcParams = default)
+    {
+        ReturnToMenuAsServer();
+    }
+
+    // Método que realmente hace que el servidor (host) cambie de escena en red
+    private void ReturnToMenuAsServer()
+    {
+        // Opcional: restaurar el cursor y cualquier estado antes de cargar
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
 
-        // Cargar la escena principal (MenuScene)
-        SceneManager.LoadScene("MenuScene");
+        // ESTA es la línea CLAVE: 
+        // el servidor invoca NetworkManager.SceneManager.LoadScene para propagar
+        // la orden a todos los clientes.
+        NetworkManager.SceneManager.LoadScene(
+            "MenuScene",
+            UnityEngine.SceneManagement.LoadSceneMode.Single
+        );
     }
 
     public Vector3 GetHumanSpawnPoint(int index)

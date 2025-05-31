@@ -283,15 +283,7 @@ public class StartGameVariables : NetworkBehaviour
         SelectedGameMode.Value = mode;
         
     }
-    public override void OnDestroy()
-    {
-        humanList?.Dispose();
-        zombieList?.Dispose();
-        readyPlayersList?.Dispose();
-        playersNames?.Dispose();
-        base.OnDestroy();
 
-    }
 
     public override void OnNetworkDespawn()
     {
@@ -304,21 +296,125 @@ public class StartGameVariables : NetworkBehaviour
         base.OnNetworkDespawn();
     }
 
-    
+
 
     private void OnDisable()
     {
+        // Desuscribimos callbacks del servidor, si existían:
         if (IsServer)
         {
-            //NetworkManager.ConnectionApprovalCallback -= ApproveConnection;
             NetworkManager.OnClientConnectedCallback -= OnClientConnected;
         }
 
-        // Asegura liberación si el GameObject se desactiva
-        humanList.Dispose();
-        zombieList.Dispose();
-        readyPlayersList.Dispose();
-       playersNames.Dispose();
+        // NO llamar a Dispose aquí; solo limpiar referencias si fuera necesario.
+        // Comprobamos que cada lista exista, y la "ponemos a null" sin llamar Dispose().
+        // El Dispose real se hará en OnDestroy() de abajo.
+
+        if (humanList != null)
+        {
+            // (Opcional) desuscribir eventos de humanList si los tuvieras:
+            // humanList.OnListChanged -= AlgunCallback;
+            humanList = null;
+        }
+
+        if (zombieList != null)
+        {
+            // zombieList.OnListChanged -= AlgunCallback;
+            zombieList = null;
+        }
+
+        if (readyPlayersList != null)
+        {
+            // readyPlayersList.OnListChanged -= AlgunCallback;
+            readyPlayersList = null;
+        }
+
+        if (playersNames != null)
+        {
+            // playersNames.OnListChanged -= AlgunCallback;
+            playersNames = null;
+        }
+    }
+
+    public override void OnDestroy()
+    {
+        // Intentamos disponer de cada NetworkList, pero protegemos con try/catch
+        if (humanList != null)
+        {
+            try
+            {
+                humanList.Dispose();
+            }
+            catch (System.ObjectDisposedException)
+            {
+                // Si ya estaba dispuesto, simplemente ignoramos
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning($"[StartGameVariables] Excepción al disponer humanList: {e}");
+            }
+            humanList = null;
+        }
+
+        if (zombieList != null)
+        {
+            try
+            {
+                zombieList.Dispose();
+            }
+            catch (System.ObjectDisposedException)
+            {
+                // Ya estaba dispuesto
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning($"[StartGameVariables] Excepción al disponer zombieList: {e}");
+            }
+            zombieList = null;
+        }
+
+        if (readyPlayersList != null)
+        {
+            try
+            {
+                readyPlayersList.Dispose();
+            }
+            catch (System.ObjectDisposedException)
+            {
+                // Ya estaba dispuesto
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning($"[StartGameVariables] Excepción al disponer readyPlayersList: {e}");
+            }
+            readyPlayersList = null;
+        }
+
+        if (playersNames != null)
+        {
+            try
+            {
+                playersNames.Dispose();
+            }
+            catch (System.ObjectDisposedException)
+            {
+                // Ya estaba dispuesto
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning($"[StartGameVariables] Excepción al disponer playersNames: {e}");
+            }
+            playersNames = null;
+        }
+
+        // Restauramos la referencia singleton si fuera necesario
+        if (Instance == this)
+        {
+            Instance = null;
+        }
+
+        // Finalmente llamamos al OnDestroy de la base, para que Netcode haga su cleanup
+        base.OnDestroy();
     }
 
 
