@@ -14,9 +14,6 @@ public class GameManager : NetworkBehaviour
     public GameObject humanoPrefab;
     public GameObject zombiePrefab;
 
-
-  
-
     private GameObject _GOlevelManager;
     private LevelManager _levelManager;
 
@@ -26,15 +23,8 @@ public class GameManager : NetworkBehaviour
     public GameObject nicknameManager;
     public NicknameSelector nicknameSelector;
 
-
-
-
     [SerializeField] private TMP_InputField inputFieldNumJugadores;
 
-
-
-
-  
 
     private void Awake()
     {

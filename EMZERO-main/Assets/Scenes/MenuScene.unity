@@ -393,6 +393,8 @@ MonoBehaviour:
   inputFieldNumJugadores: {fileID: 1121758945}
   numJugadores:
     m_InternalValue: 0
+  actualPlayers:
+    m_InternalValue: 0
   lastTypePlayer:
     m_InternalValue: 1
   SelectedGameMode:
@@ -4556,6 +4558,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   uiManager: {fileID: 1969471664}
+  readyPanel: {fileID: 753651590}
+  timeButton: {fileID: 1927241109}
+  coinButton: {fileID: 367425712}
 --- !u!114 &1661791418
 MonoBehaviour:
   m_ObjectHideFlags: 0

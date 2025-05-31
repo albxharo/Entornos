@@ -26,11 +26,11 @@ public class LevelManager : NetworkBehaviour
     [SerializeField] private GameObject zombiePrefab;   // Prefab del zombi
 
     [Header("Team Settings")]
-    [Tooltip("Numero de jugadores humanos")]
-    [SerializeField] private int numberOfHumans = 2;    // Cantidad inicial de humanos
+    [Tooltip("Número de jugadores humanos")]
+    [SerializeField] public NetworkVariable<int>  numberOfHumans = new NetworkVariable<int>(2);
 
-    [Tooltip("Numero de zombis")]
-    [SerializeField] private int numberOfZombies = 2;   // Cantidad inicial de zombis
+    [Tooltip("Número de zombis")]
+    [SerializeField] public NetworkVariable<int>   numberOfZombies = new NetworkVariable<int>(2);
 
     [Header("Game Mode Settings")]
     [Tooltip("Selecciona el modo de juego")]
@@ -41,6 +41,8 @@ public class LevelManager : NetworkBehaviour
     public List<Vector3> zombieSpawnPoints = new List<Vector3>();
 
     // Variable de red para llevar el conteo total de monedas generadas
+    
+
     public NetworkVariable<int> totalCoins = new NetworkVariable<int>(0,
         writePerm: NetworkVariableWritePermission.Server);
 
@@ -52,6 +54,17 @@ public class LevelManager : NetworkBehaviour
     private TextMeshProUGUI coinLabelText;  // Texto que muestra label de monedas
 
     // Propiedades para obtener nombres de prefabs
+    // Referencias a los elementos de texto en el canvas
+    private TextMeshProUGUI humansText;
+    private TextMeshProUGUI zombiesText;
+    private TextMeshProUGUI timeModeText;
+    private TextMeshProUGUI coinValueText;
+    private TextMeshProUGUI coinLabelText;
+
+    [SerializeField] private GameObject desconexionText;
+
+    private int CoinsGenerated = 0;
+
     public string PlayerPrefabName => playerPrefab.name;
     public string ZombiePrefabName => zombiePrefab.name;
 
@@ -78,6 +91,9 @@ public class LevelManager : NetworkBehaviour
 
     // Variable de red para llevar las monedas recolectadas por humanos
     public NetworkVariable<int> coinsCollected = new NetworkVariable<int>(0);
+    public NetworkVariable<int> numHumanos = new NetworkVariable<int>();
+    public NetworkVariable<int> numZombies = new NetworkVariable<int>();
+
 
     #endregion
 
@@ -103,12 +119,9 @@ public class LevelManager : NetworkBehaviour
     private void Start()
     {
         Debug.Log("Iniciando el nivel");
-
-        // Obtener listas de humanos y zombis desde variables globales de inicio de juego
-        numberOfHumans = StartGameVariables.Instance.humanList.Count;
-        numberOfZombies = StartGameVariables.Instance.zombieList.Count;
-
-        // Buscar el objeto "CanvasPlayer" en la escena para obtener referencias a UI
+        numberOfHumans.Value = StartGameVariables.Instance.humanList.Count;
+        numberOfZombies.Value = StartGameVariables.Instance.zombieList.Count;
+        // Buscar el objeto "CanvasPlayer" en la escena
         GameObject canvas = GameObject.Find("CanvasPlayer");
         if (canvas != null)
         {
@@ -216,8 +229,7 @@ public class LevelManager : NetworkBehaviour
         // Actualizar UI de equipos cada fotograma
         UpdateTeamUI();
 
-        // Si no quedan humanos y no se ha terminado la partida, ganan zombies
-        if (numberOfHumans == 0 && !isGameOver)
+        if (numberOfHumans.Value == 0 && !isGameOver)
         {
             isGameOver = true;
             ShowGameOverZombiesWin();
@@ -227,7 +239,7 @@ public class LevelManager : NetworkBehaviour
         if (isGameOver)
         {
             ShowGameOverPanel();
-        }
+        }//////////////////////////////////////////
     }
 
     #endregion
@@ -242,6 +254,16 @@ public class LevelManager : NetworkBehaviour
 
         // Suscribirse a cambios de la variable de red coinsCollected para actualizar UI
         coinsCollected.OnValueChanged += OnCoinsChanged;
+
+        //Evento para actualizar  ui segun número de zombies y humanos
+        numberOfZombies.OnValueChanged += OnZombiesChanged;
+        NetworkManager.OnClientDisconnectCallback += OnClientDisconnected;
+
+    }
+
+    private void OnZombiesChanged(int previousValue, int newValue)
+    {
+        UpdateTeamUI();
     }
 
   
@@ -308,11 +330,9 @@ public class LevelManager : NetworkBehaviour
                 }
             }
 
-            // Ajustar contadores de equipos
-            numberOfHumans--;
-            numberOfZombies++;
-            UpdateTeamUI();
-        }
+            numberOfHumans.Value--;
+        numberOfZombies.Value++;
+        UpdateTeamUI();
     }
 
     private void ChangeToHuman()
@@ -352,9 +372,9 @@ public class LevelManager : NetworkBehaviour
                 {
                     playerController.enabled = true;
                     playerController.cameraTransform = mainCamera.transform;
-                    playerController.isZombie = false; // Cambiar estado a humano
-                    numberOfHumans++;   // Incrementar numero de humanos
-                    numberOfZombies--;  // Decrementar numero de zombis
+                    playerController.isZombie = false; // Cambiar el estado a humano
+                    numberOfHumans.Value++; // Aumentar el número de humanos
+                    numberOfZombies.Value--; // Reducir el número de zombis
                 }
                 else
                 {
@@ -377,13 +397,13 @@ public class LevelManager : NetworkBehaviour
         // Actualizar texto de humanos
         if (humansText != null)
         {
-            humansText.text = $"{numberOfHumans}";
+            humansText.text = $"{numberOfHumans.Value}";
         }
 
         // Actualizar texto de zombis
         if (zombiesText != null)
         {
-            zombiesText.text = $"{numberOfZombies}";
+            zombiesText.text = $"{numberOfZombies.Value}";
         }
     }
 
@@ -439,7 +459,7 @@ public class LevelManager : NetworkBehaviour
             coinValueText.text = $"{newValue}/{totalCoins.Value}";
     }
 
-    private void ShowGameOverPanel()
+    public void ShowGameOverPanel()
     {
         if (gameOverPanel != null)
         {
@@ -456,12 +476,8 @@ public class LevelManager : NetworkBehaviour
 
     public void ReturnToMainMenu()
     {
-        // Bloquear e invisibilizar cursor antes de cambiar de escena
-        Cursor.lockState = CursorLockMode.Locked;
-        Cursor.visible = false;
+        NetworkManager.SceneManager.LoadScene("MenuScene", UnityEngine.SceneManagement.LoadSceneMode.Single);
 
-        // Cargar la escena principal (MenuScene)
-        SceneManager.LoadScene("MenuScene");
     }
 
     public Vector3 GetHumanSpawnPoint(int index)
@@ -625,8 +641,7 @@ public class LevelManager : NetworkBehaviour
     {
         if (gameMode == GameMode.Tiempo)
         {
-            // Si solo queda un humano, guardar su ID antes de conversion
-            if (numberOfHumans == 1)
+            if (numberOfHumans.Value == 1)
             {
                 foreach (var client in NetworkManager.Singleton.ConnectedClientsList)
                 {
@@ -639,15 +654,13 @@ public class LevelManager : NetworkBehaviour
                 }
             }
 
-            // Si no quedan humanos, ganar zombies
-            if (numberOfHumans == 0 && !isGameOver)
+            if (numberOfHumans.Value == 0 && !isGameOver)
             {
                 isGameOver = true;
                 ShowGameOverZombiesWin();
             }
 
-            // Si se acabo el tiempo y quedan humanos, ganan humanos
-            if (remainingSeconds.Value <= 0 && numberOfHumans > 0 && !isGameOver)
+            if (remainingSeconds <= 0 && numberOfHumans.Value > 0 && !isGameOver)
             {
                 isGameOver = true;
                 ShowGameOverHumansWin();
