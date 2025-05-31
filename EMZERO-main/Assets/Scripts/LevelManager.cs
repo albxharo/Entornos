@@ -9,6 +9,7 @@ using UnityEngine.UI;
 using UnityEngine.Networking;
 using Unity.Netcode;
 
+// Definicion de los modos de juego disponibles
 public enum GameMode
 {
     None,
@@ -16,68 +17,64 @@ public enum GameMode
     Monedas
 }
 
-
 public class LevelManager : NetworkBehaviour
 {
     #region Properties
 
     [Header("Prefabs")]
-    [SerializeField] private GameObject playerPrefab;
-    [SerializeField] private GameObject zombiePrefab;
+    [SerializeField] private GameObject playerPrefab;   // Prefab del jugador humano
+    [SerializeField] private GameObject zombiePrefab;   // Prefab del zombi
 
     [Header("Team Settings")]
-    [Tooltip("Número de jugadores humanos")]
-    [SerializeField] private int numberOfHumans = 2;
+    [Tooltip("Numero de jugadores humanos")]
+    [SerializeField] private int numberOfHumans = 2;    // Cantidad inicial de humanos
 
-    [Tooltip("Número de zombis")]
-    [SerializeField] private int numberOfZombies = 2;
+    [Tooltip("Numero de zombis")]
+    [SerializeField] private int numberOfZombies = 2;   // Cantidad inicial de zombis
 
     [Header("Game Mode Settings")]
     [Tooltip("Selecciona el modo de juego")]
-    [SerializeField] private GameMode gameMode;
+    [SerializeField] private GameMode gameMode;         // Modo de juego seleccionado
 
-
-
+    // Listas de puntos de aparicion para humanos y zombis
     public List<Vector3> humanSpawnPoints = new List<Vector3>();
     public List<Vector3> zombieSpawnPoints = new List<Vector3>();
 
-
+    // Variable de red para llevar el conteo total de monedas generadas
     public NetworkVariable<int> totalCoins = new NetworkVariable<int>(0,
         writePerm: NetworkVariableWritePermission.Server);
 
+    // Referencias a elementos de texto en el canvas
+    private TextMeshProUGUI humansText;     // Texto que muestra numero de humanos restantes
+    private TextMeshProUGUI zombiesText;    // Texto que muestra numero de zombis restantes
+    private TextMeshProUGUI timeModeText;   // Texto que muestra tiempo restante o monedas recolectadas
+    private TextMeshProUGUI coinValueText;  // Texto que muestra valor actual de monedas
+    private TextMeshProUGUI coinLabelText;  // Texto que muestra label de monedas
 
-    // Referencias a los elementos de texto en el canvas
-    private TextMeshProUGUI humansText;
-    private TextMeshProUGUI zombiesText;
-    private TextMeshProUGUI timeModeText;
-    private TextMeshProUGUI coinValueText;
-    private TextMeshProUGUI coinLabelText;
-
+    // Propiedades para obtener nombres de prefabs
     public string PlayerPrefabName => playerPrefab.name;
     public string ZombiePrefabName => zombiePrefab.name;
 
-    private UniqueIdGenerator uniqueIdGenerator;
-    private LevelBuilder levelBuilder;
+    private UniqueIdGenerator uniqueIdGenerator; // Componente para generar IDs unicos
+    private LevelBuilder levelBuilder;           // Componente para construir el nivel
 
-    private PlayerController playerController;
+    private PlayerController playerController;   // Referencia al controlador del jugador
 
     [SerializeField]
-    private float remainingSeconds;
+    private float remainingSeconds;              // Segundos restantes en modo tiempo
 
-    public bool isGameOver = false;
-    private ulong? ultimoHumanoId = null;
+    public bool isGameOver = false;              // Indica si la partida ha terminado
+    private ulong? ultimoHumanoId = null;        // ID del ultimo humano antes de conversion
 
-    // Estado local
+    // Estado local para saber si la partida ha iniciado
     private bool partidaIniciada = false;
-    public GameObject gameOverPanel; // Asigna el panel desde el inspector
+    public GameObject gameOverPanel;             // Panel de Game Over (asignado en Inspector)
 
-    public GameObject GO_gameManager;
-    private GameManager gameManager;
+    public GameObject GO_gameManager;            // Referencia al objeto GameManager
+    private GameManager gameManager;             // Componente GameManager
 
-
+    // Variable de red para llevar las monedas recolectadas por humanos
     public NetworkVariable<int> coinsCollected = new NetworkVariable<int>(0);
-
-
 
     #endregion
 
@@ -87,39 +84,45 @@ public class LevelManager : NetworkBehaviour
     {
         Debug.Log("Despertando el nivel");
 
-        // Obtener la referencia al UniqueIDGenerator
+        // Obtener referencia a UniqueIdGenerator en el mismo GameObject
         uniqueIdGenerator = GetComponent<UniqueIdGenerator>();
 
-        // Obtener la referencia al LevelBuilder
+        // Obtener referencia a LevelBuilder en el mismo GameObject
         levelBuilder = GetComponent<LevelBuilder>();
 
+        // Obtener referencia al GameManager desde el GameObject asignado
         gameManager = GO_gameManager.GetComponent<GameManager>();
 
-        Time.timeScale = 1f; // Asegurarse de que el tiempo no esté detenido
+        // Asegurarse de que el tiempo no este pausado
+        Time.timeScale = 1f;
     }
 
     private void Start()
     {
         Debug.Log("Iniciando el nivel");
+
+        // Obtener listas de humanos y zombis desde variables globales de inicio de juego
         numberOfHumans = StartGameVariables.Instance.humanList.Count;
         numberOfZombies = StartGameVariables.Instance.zombieList.Count;
-        // Buscar el objeto "CanvasPlayer" en la escena
+
+        // Buscar el objeto "CanvasPlayer" en la escena para obtener referencias a UI
         GameObject canvas = GameObject.Find("CanvasPlayer");
         if (canvas != null)
         {
             Debug.Log("Canvas encontrado");
 
-            // Buscar el Panel dentro del CanvasHud
+            // Buscar el panel "PanelHud" dentro del Canvas
             Transform panel = canvas.transform.Find("PanelHud");
             if (panel != null)
             {
-                // Buscar los TextMeshProUGUI llamados "HumansValue" y "ZombiesValue" dentro del Panel
+                // Buscar los objetos de texto dentro del HUD
                 Transform humansTextTransform = panel.Find("HumansValue");
                 Transform zombiesTextTransform = panel.Find("ZombiesValue");
                 Transform gameModeTextTransform = panel.Find("GameModeConditionValue");
                 Transform coinsTextTransform = panel.Find("CoinsValue");
                 Transform coinscoinTextTransform = panel.Find("Coins");
 
+                // Si existen, obtener componentes TextMeshProUGUI
                 if (humansTextTransform != null)
                 {
                     humansText = humansTextTransform.GetComponent<TextMeshProUGUI>();
@@ -145,41 +148,40 @@ public class LevelManager : NetworkBehaviour
             }
         }
 
+        // Convertir minutos configurados a segundos
         remainingSeconds = StartGameVariables.Instance.minutes * 60;
 
-        // Obtener los puntos de aparición y el número de monedas generadas desde LevelBuilder
+        // Si existe el LevelBuilder, construir el nivel y obtener puntos de spawn
         if (levelBuilder != null)
         {
-
             levelBuilder.Build();
             humanSpawnPoints = levelBuilder.GetHumanSpawnPoints();
             zombieSpawnPoints = levelBuilder.GetZombieSpawnPoints();
         }
 
-
+        // Actualizar la UI de equipos (numero de humanos y zombis)
         UpdateTeamUI();
     }
 
     private void Update()
     {
-
+        // Si la partida no ha iniciado, no ejecutamos logica de tiempo o monedas
         if (!partidaIniciada)
-            return;    // hasta que no arranque, no entramos a lógica de tiempo/monedas
+            return;
+
+        // Dependiendo del modo de juego, llamar a la logica correspondiente
         if (gameMode == GameMode.Tiempo)
         {
-            // Lógica para el modo de juego basado en tiempo
             HandleTimeLimitedGameMode();
         }
         else if (gameMode == GameMode.Monedas)
         {
-            // Lógica para el modo de juego basado en monedas
             HandleCoinBasedGameMode();
         }
 
-        //borrar luego
-        if (Input.GetKeyDown(KeyCode.Z)) // Presiona "Z" para convertirte en Zombie
+        // Logica de prueba para convertir jugador a zombi/humano con teclas Z y H
+        if (Input.GetKeyDown(KeyCode.Z)) // Presiona Z para convertirte en Zombi
         {
-            // Comprobar si el jugador actual está usando el prefab de humano
             GameObject currentPlayer = GameObject.FindGameObjectWithTag("Player");
             if (currentPlayer != null && currentPlayer.name.Contains(playerPrefab.name))
             {
@@ -190,10 +192,8 @@ public class LevelManager : NetworkBehaviour
                 Debug.Log("El jugador actual no es un humano.");
             }
         }
-        else if (Input.GetKeyDown(KeyCode.H)) // Presiona "H" para convertirte en Humano
+        else if (Input.GetKeyDown(KeyCode.H)) // Presiona H para convertirte en Humano
         {
-
-            // Comprobar si el jugador actual está usando el prefab de zombie
             GameObject currentPlayer = GameObject.FindGameObjectWithTag("Player");
             if (currentPlayer != null && currentPlayer.name.Contains(zombiePrefab.name))
             {
@@ -201,17 +201,21 @@ public class LevelManager : NetworkBehaviour
             }
             else
             {
-                Debug.Log("El jugador actual no es un zombie.");
+                Debug.Log("El jugador actual no es un zombi.");
             }
         }
+
+        // Actualizar UI de equipos cada fotograma
         UpdateTeamUI();
 
+        // Si no quedan humanos y no se ha terminado la partida, ganan zombies
         if (numberOfHumans == 0 && !isGameOver)
         {
             isGameOver = true;
             ShowGameOverZombiesWin();
         }
 
+        // Si la partida termino, mostrar panel de Game Over
         if (isGameOver)
         {
             ShowGameOverPanel();
@@ -220,24 +224,23 @@ public class LevelManager : NetworkBehaviour
 
     #endregion
 
-
     public override void OnNetworkSpawn()
     {
         if (IsServer)
         {
-            // inicializa coinsCollected.Value = 0 si quieres
+            // Inicializar contador de monedas recolectadas en el servidor
             coinsCollected.Value = 0;
         }
 
-        // Todos: nos suscribimos a cambios
+        // Suscribirse a cambios de la variable de red coinsCollected para actualizar UI
         coinsCollected.OnValueChanged += OnCoinsChanged;
     }
-
 
     #region Team management methods
 
     private void ChangeToZombie()
     {
+        // Obtener el jugador actual y convertirlo
         GameObject currentPlayer = GameObject.FindGameObjectWithTag("Player");
         ChangeToZombie(currentPlayer, true);
     }
@@ -246,18 +249,22 @@ public class LevelManager : NetworkBehaviour
     {
         if (human == null) return;
 
+        // Obtener NetworkObject y datos de posicion/rotacion del humano
         NetworkObject oldNO = human.GetComponent<NetworkObject>();
         ulong clientId = oldNO.OwnerClientId;
         string uniqueID = human.GetComponent<PlayerController>().uniqueID;
         Vector3 pos = human.transform.position;
         Quaternion rot = human.transform.rotation;
 
+        // Destruir el objeto humano
         Destroy(human);
 
+        // Instanciar prefab de zombi en la misma posicion y rotacion
         GameObject zombie = Instantiate(zombiePrefab, pos, rot);
         var zombieNO = zombie.GetComponent<NetworkObject>();
-        zombieNO.SpawnAsPlayerObject(clientId); // ¡le asigna el control al mismo jugador!
+        zombieNO.SpawnAsPlayerObject(clientId); // Asignar control al mismo jugador
 
+        // Configurar el PlayerController del zombi
         var pc = zombie.GetComponent<PlayerController>();
         if (pc != null)
         {
@@ -265,7 +272,7 @@ public class LevelManager : NetworkBehaviour
             pc.isZombie = true;
             pc.uniqueID = uniqueID;
 
-            // UI y cámara
+            // Si es el cliente local, actualizar camara y UI
             if (enabled && clientId == NetworkManager.Singleton.LocalClientId)
             {
                 Camera cam = Camera.main;
@@ -278,57 +285,53 @@ public class LevelManager : NetworkBehaviour
                 }
             }
 
+            // Ajustar contadores de equipos
             numberOfHumans--;
             numberOfZombies++;
             UpdateTeamUI();
         }
     }
 
-
     private void ChangeToHuman()
     {
         Debug.Log("Cambiando a Humano");
 
-        // Obtener la referencia al jugador actual
+        // Obtener referencia al jugador actual
         GameObject currentPlayer = GameObject.FindGameObjectWithTag("Player");
-
         if (currentPlayer != null)
         {
-            // Guardar la posición y rotación del jugador actual
+            // Guardar posicion y rotacion del jugador actual
             Vector3 playerPosition = currentPlayer.transform.position;
             Quaternion playerRotation = currentPlayer.transform.rotation;
 
-            // Destruir el jugador actual
+            // Destruir el zombi o humano actual
             Destroy(currentPlayer);
 
-            // Instanciar el prefab del humano en la misma posición y rotación
+            // Instanciar el prefab del humano en la misma posicion y rotacion
             GameObject human = Instantiate(playerPrefab, playerPosition, playerRotation);
             human.tag = "Player";
 
-            // Obtener la referencia a la cámara principal
+            // Obtener la camara principal
             Camera mainCamera = Camera.main;
 
             if (mainCamera != null)
             {
-                // Obtener el script CameraController de la cámara principal
+                // Obtener script CameraController y asignar el jugador
                 CameraController cameraController = mainCamera.GetComponent<CameraController>();
-
                 if (cameraController != null)
                 {
-                    // Asignar el humano al script CameraController
                     cameraController.player = human.transform;
                 }
 
-                // Obtener el componente PlayerController del humano instanciado
+                // Configurar PlayerController del humano instanciado
                 playerController = human.GetComponent<PlayerController>();
-                // Asignar el transform de la cámara al PlayerController
                 if (playerController != null)
                 {
                     playerController.enabled = true;
                     playerController.cameraTransform = mainCamera.transform;
-                    playerController.isZombie = false; // Cambiar el estado a humano
-                    numberOfHumans++; // Aumentar el número de humanos
-                    numberOfZombies--; // Reducir el número de zombis
+                    playerController.isZombie = false; // Cambiar estado a humano
+                    numberOfHumans++;   // Incrementar numero de humanos
+                    numberOfZombies--;  // Decrementar numero de zombis
                 }
                 else
                 {
@@ -337,24 +340,24 @@ public class LevelManager : NetworkBehaviour
             }
             else
             {
-                Debug.LogError("No se encontró la cámara principal.");
+                Debug.LogError("No se encontro la camara principal.");
             }
         }
         else
         {
-            Debug.LogError("No se encontró el jugador actual.");
+            Debug.LogError("No se encontro el jugador actual.");
         }
     }
 
-
-
     private void UpdateTeamUI()
     {
+        // Actualizar texto de humanos
         if (humansText != null)
         {
             humansText.text = $"{numberOfHumans}";
         }
 
+        // Actualizar texto de zombis
         if (zombiesText != null)
         {
             zombiesText.text = $"{numberOfZombies}";
@@ -367,38 +370,35 @@ public class LevelManager : NetworkBehaviour
 
     private void HandleTimeLimitedGameMode()
     {
-        // Implementar la lógica para el modo de juego basado en tiempo
+        // Logica para el modo de juego basado en tiempo
         if (isGameOver) return;
 
-        // Decrementar remainingSeconds basado en Time.deltaTime
+        // Reducir remainingSeconds segun tiempo transcurrido
         remainingSeconds -= Time.deltaTime;
 
-        // Comprobar si el tiempo ha llegado a cero
+        // Comprobar si el tiempo se ha agotado
         if (remainingSeconds <= 0)
         {
             remainingSeconds = 0;
             CheckEndGameCondition();
         }
 
-        // Convertir remainingSeconds a minutos y segundos
+        // Convertir segundos restantes a minutos y segundos
         int minutesRemaining = Mathf.FloorToInt(remainingSeconds / 60);
         int secondsRemaining = Mathf.FloorToInt(remainingSeconds % 60);
 
-        // Actualizar el texto de la interfaz de usuario
+        // Actualizar texto de tiempo en la UI
         if (timeModeText != null)
         {
             timeModeText.text = $"{minutesRemaining:D2}:{secondsRemaining:D2}";
         }
-
     }
 
     private void HandleCoinBasedGameMode()
     {
+        // Logica para el modo de juego basado en monedas
         if (isGameOver) return;
 
-
-
-        // Implementar la lógica para el modo de juego basado en monedas
         if (timeModeText != null && playerController != null)
         {
             timeModeText.text = $"{playerController.CoinsCollected}/{totalCoins.Value}";
@@ -411,8 +411,7 @@ public class LevelManager : NetworkBehaviour
 
     private void OnCoinsChanged(int oldValue, int newValue)
     {
-
-        // Actualiza la UI en cada cliente
+        // Actualizar la UI de monedas en cada cliente cuando cambia
         if (coinValueText != null)
             coinValueText.text = $"{newValue}/{totalCoins.Value}";
     }
@@ -421,89 +420,86 @@ public class LevelManager : NetworkBehaviour
     {
         if (gameOverPanel != null)
         {
+            // Pausar la partida
             Time.timeScale = 0f;
-            gameOverPanel.SetActive(true); // Muestra el panel de pausa
+            // Mostrar el panel de Game Over
+            gameOverPanel.SetActive(true);
 
-            // Gestión del cursor
-            Cursor.lockState = CursorLockMode.None; // Desbloquea el cursor
-            Cursor.visible = true; // Hace visible el cursor
+            // Ajustar cursor para permitir interactuar con UI
+            Cursor.lockState = CursorLockMode.None;
+            Cursor.visible = true;
         }
     }
 
     public void ReturnToMainMenu()
     {
-        // Gestión del cursor
-        Cursor.lockState = CursorLockMode.Locked; // Bloquea el cursor
-        Cursor.visible = false; // Oculta el cursor
+        // Bloquear e invisibilizar cursor antes de cambiar de escena
+        Cursor.lockState = CursorLockMode.Locked;
+        Cursor.visible = false;
 
-        // Cargar la escena del menú principal
-        SceneManager.LoadScene("MenuScene"); // Cambia "MenuScene" por el nombre de tu escena principal
+        // Cargar la escena principal (MenuScene)
+        SceneManager.LoadScene("MenuScene");
     }
 
     public Vector3 GetHumanSpawnPoint(int index)
     {
+        // Devolver punto de spawn valido o Vector3.zero si index fuera de rango
         if (index >= 0 && index < humanSpawnPoints.Count)
         {
             return humanSpawnPoints[index];
         }
 
-        Debug.LogWarning("Índice de spawn fuera de rango. Se usará el primer punto.");
+        Debug.LogWarning("Indice de spawn fuera de rango. Se usara el primer punto.");
         return Vector3.zero;
-
-
     }
 
     public Vector3 GetZombieSpawnPoint(int index)
     {
+        // Devolver punto de spawn valido o Vector3.zero si index fuera de rango
         if (index >= 0 && index < zombieSpawnPoints.Count)
         {
             return zombieSpawnPoints[index];
         }
 
-        Debug.LogWarning("Índice de spawn fuera de rango. Se usará el primer punto.");
+        Debug.LogWarning("Indice de spawn fuera de rango. Se usara el primer punto.");
         return Vector3.zero;
-
-        #endregion
-
     }
+    #endregion
 
-    // Exponer para el RPC
-    // Exponer para el RPC
+    // Metodo para iniciar la partida, llamado desde un RPC
     public void StartGame(GameMode mode)
     {
         Debug.Log($"[LevelManager] StartGame() → modo={mode}");
         gameMode = mode;
         partidaIniciada = true;
 
-
         if (mode == GameMode.Monedas)
         {
+            // Si es modo Monedas, spawnear monedas y actualizar totalCoins
             levelBuilder.SpawnCoins();
             totalCoins.Value = levelBuilder.GetCoinsGenerated();
             coinsCollected.Value = 0;
-
         }
 
-
+        // Configurar UI segun el modo de juego
         SetupUIForMode(mode);
     }
 
-
-
     private void SetupUIForMode(GameMode mode)
     {
-        // Ocultamos siempre todos los textos:
+        // Ocultar todos los textos relacionados con tiempo y monedas
         timeModeText?.gameObject.SetActive(false);
         coinLabelText?.gameObject.SetActive(false);
         coinValueText?.gameObject.SetActive(false);
 
         if (mode == GameMode.Tiempo)
         {
+            // Mostrar contador de tiempo en modo Tiempo
             timeModeText.gameObject.SetActive(true);
         }
         else if (mode == GameMode.Monedas)
         {
-            // Averiguamos si yo soy zombi
+            // Verificar si el jugador local es zombi
             var localPlayerObj = NetworkManager.Singleton.SpawnManager.GetLocalPlayerObject();
             var pc = localPlayerObj?.GetComponent<PlayerController>();
             bool soyZombie = pc != null && pc.isZombie;
@@ -514,13 +510,11 @@ public class LevelManager : NetworkBehaviour
         }
     }
 
-
-
-
     private void ShowGameOverZombiesWin()
     {
         if (!IsServer) return;
 
+        // Enviar mensaje de Game Over a cada cliente segun si eran humanos o zombis
         foreach (var client in NetworkManager.Singleton.ConnectedClientsList)
         {
             var player = client.PlayerObject;
@@ -533,18 +527,18 @@ public class LevelManager : NetworkBehaviour
 
             if (ultimoHumanoId.HasValue && pc.OwnerClientId == ultimoHumanoId.Value)
             {
-                msg = "Has sido el último humano. Derrota.";
+                msg = "Has sido el ultimo humano. Derrota.";
             }
             else if (pc.isZombie)
             {
                 msg = pc.isOriginalZombie ? "¡Victoria total para zombis originales!" : "¡Victoria parcial para zombis convertidos!";
             }
-
             else
             {
                 msg = "Derrota.";
             }
 
+            // Llamar a ClientRpc para mostrar mensaje de Game Over en cada cliente
             ShowGameOverClientRpc(msg, new ClientRpcParams
             {
                 Send = new ClientRpcSendParams
@@ -559,6 +553,7 @@ public class LevelManager : NetworkBehaviour
     {
         if (!IsServer) return;
 
+        // Enviar mensaje de victoria a todos los clientes
         foreach (var client in NetworkManager.Singleton.ConnectedClientsList)
         {
             var pc = client.PlayerObject?.GetComponent<PlayerController>();
@@ -581,25 +576,27 @@ public class LevelManager : NetworkBehaviour
     [ClientRpc]
     private void ShowGameOverClientRpc(string mensaje, ClientRpcParams rpcParams = default)
     {
+        // Pausar el juego y mostrar panel de Game Over en cliente
         Time.timeScale = 0f;
         gameOverPanel.SetActive(true);
 
+        // Ajustar cursor para UI
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
 
+        // Actualizar texto del Game Over con el mensaje recibido
         var text = gameOverPanel.GetComponentInChildren<TMPro.TextMeshProUGUI>();
         if (text != null)
             text.text = mensaje;
     }
 
-
     public void CheckEndGameCondition()
     {
         if (gameMode == GameMode.Tiempo)
         {
+            // Si solo queda un humano, guardar su ID antes de conversion
             if (numberOfHumans == 1)
             {
-                // Busca y guarda el último humano antes de que se convierta
                 foreach (var client in NetworkManager.Singleton.ConnectedClientsList)
                 {
                     var pc = client.PlayerObject?.GetComponent<PlayerController>();
@@ -611,46 +608,39 @@ public class LevelManager : NetworkBehaviour
                 }
             }
 
+            // Si no quedan humanos, ganar zombies
             if (numberOfHumans == 0 && !isGameOver)
             {
                 isGameOver = true;
                 ShowGameOverZombiesWin();
             }
 
+            // Si se acabo el tiempo y quedan humanos, ganan humanos
             if (remainingSeconds <= 0 && numberOfHumans > 0 && !isGameOver)
             {
                 isGameOver = true;
                 ShowGameOverHumansWin();
             }
         }
-      
-
-
-
     }
 
     #region RPCs para Game Over en modo Monedas
 
     /// <summary>
-    /// Este método lo llama DetectPlayerCollision en el cliente.
-    /// Corre en el servidor: despawnea moneda, actualiza contador y, si toca,
-    /// dispara TriggerGameOverOnAllClients().
+    /// Metodo que llama DetectPlayerCollision en el cliente. Corre en el servidor:
+    /// despawnea moneda, actualiza contador y, si toca, dispara TriggerGameOverOnAllClients().
     /// </summary>
     /// <param name="rpcParams"></param>
     [ServerRpc(RequireOwnership = false)]
     public void SubmitPickupAndCheckServerRpc(ServerRpcParams rpcParams = default)
     {
-        Debug.Log($"[SubmitPickupAndCheckServerRpc] Servidor recibió petición del cliente {rpcParams.Receive.SenderClientId}");
+        Debug.Log($"[SubmitPickupAndCheckServerRpc] Servidor recibio peticion del cliente {rpcParams.Receive.SenderClientId}");
 
-        // Despawnear la moneda en red
-        var no = NetworkManager.Singleton.SpawnManager.GetPlayerNetworkObject(rpcParams.Receive.SenderClientId)?.GetComponent<NetworkObject>();
-        // Como la moneda está en el mismo GameObject que DetectPlayerCollision, usamos GetComponent:
-        var monedaNO = no == null ? null : no;
-        // Pero en muchos casos "no" será null, porque no estamos en el objeto del jugador, sino en el del script DetectPlayerCollision.
-        // Así que mejor despawneamos a partir de this.GameObject:
+        // Obtener NetworkObject de la moneda (script en mismo GameObject)
         var thisNO = GetComponent<NetworkObject>();
         if (thisNO != null && thisNO.IsSpawned)
         {
+            // Despawnear la moneda en red
             thisNO.Despawn();
             Debug.Log("[SubmitPickupAndCheckServerRpc] Moneda despawneada en red.");
         }
@@ -667,26 +657,26 @@ public class LevelManager : NetworkBehaviour
             lm.coinsCollected.Value += 1;
             Debug.Log($"[SubmitPickupAndCheckServerRpc] coinsCollected: {antes} → {lm.coinsCollected.Value} (totalCoins = {lm.totalCoins.Value})");
 
-            // Comprobar fin de juego Monedas en el mismo hilo
+            // Comprobar if fin de juego en modo monedas
             if (!lm.isGameOver && lm.coinsCollected.Value >= lm.totalCoins.Value && lm.coinsCollected.Value > 0)
             {
-                Debug.Log("[SubmitPickupAndCheckServerRpc] Condición Monedas cumplida: Game Over → llamando a TriggerGameOverOnAllClients()");
+                Debug.Log("[SubmitPickupAndCheckServerRpc] Condicion Monedas cumplida: Game Over → llamando a TriggerGameOverOnAllClients()");
                 lm.isGameOver = true;
                 lm.TriggerGameOverOnAllClients();
             }
             else
             {
-                Debug.Log("[SubmitPickupAndCheckServerRpc] Aún no toca Game Over (o ya isGameOver=true).");
+                Debug.Log("[SubmitPickupAndCheckServerRpc] Aun no toca Game Over (o ya isGameOver=true).");
             }
         }
         else
         {
-            Debug.LogError("[SubmitPickupAndCheckServerRpc] NO se encontró LevelManager para actualizar monedas.");
+            Debug.LogError("[SubmitPickupAndCheckServerRpc] NO se encontro LevelManager para actualizar monedas.");
         }
     }
 
     /// <summary>
-    /// Envía a cada cliente un mensaje de Game Over (Monedas). Corre en el servidor.
+    /// Envia a cada cliente un mensaje de Game Over (Monedas). Corre en el servidor.
     /// </summary>
     public void TriggerGameOverOnAllClients()
     {
@@ -719,12 +709,12 @@ public class LevelManager : NetworkBehaviour
     [ClientRpc]
     private void ShowGameOverCoinClientRpc(string mensaje, ClientRpcParams rpcParams = default)
     {
-        Debug.Log($"[ShowGameOverClientRpc] Cliente {NetworkManager.Singleton.LocalClientId} recibió Game Over: \"{mensaje}\"");
+        Debug.Log($"[ShowGameOverClientRpc] Cliente {NetworkManager.Singleton.LocalClientId} recibio Game Over: \"{mensaje}\"");
 
-        // 1) Pausar la partida local
+        // Pausar la partida local
         Time.timeScale = 0f;
 
-        // 2) Mostrar el panel de Game Over
+        // Mostrar el panel de Game Over y actualizar texto
         if (gameOverPanel != null)
         {
             gameOverPanel.SetActive(true);
@@ -735,19 +725,18 @@ public class LevelManager : NetworkBehaviour
             }
             else
             {
-                Debug.LogError("[ShowGameOverClientRpc] No se encontró TextMeshProUGUI dentro de gameOverPanel.");
+                Debug.LogError("[ShowGameOverClientRpc] No se encontro TextMeshProUGUI dentro de gameOverPanel.");
             }
         }
         else
         {
-            Debug.LogError("[ShowGameOverClientRpc] gameOverPanel NO está asignado en el Inspector.");
+            Debug.LogError("[ShowGameOverClientRpc] gameOverPanel NO esta asignado en el Inspector.");
         }
 
-        // 3) Asegurarse de que el cursor se vea
+        // Asegurar que el cursor sea visible y desbloqueado
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
     }
 
     #endregion
-
 }
