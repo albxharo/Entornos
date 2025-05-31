@@ -36,7 +36,7 @@ public class LevelManager : NetworkBehaviour
     [Tooltip("Selecciona el modo de juego")]
     [SerializeField] private GameMode gameMode;
 
-   
+
 
     public List<Vector3> humanSpawnPoints = new List<Vector3>();
     public List<Vector3> zombieSpawnPoints = new List<Vector3>();
@@ -67,7 +67,7 @@ public class LevelManager : NetworkBehaviour
     [SerializeField]
     private float remainingSeconds;
 
-    private bool isGameOver = false;
+    public bool isGameOver = false;
     private ulong? ultimoHumanoId = null;
 
     // Estado local
@@ -153,7 +153,7 @@ public class LevelManager : NetworkBehaviour
         // Obtener los puntos de aparición y el número de monedas generadas desde LevelBuilder
         if (levelBuilder != null)
         {
-            
+
             levelBuilder.Build();
             humanSpawnPoints = levelBuilder.GetHumanSpawnPoints();
             zombieSpawnPoints = levelBuilder.GetZombieSpawnPoints();
@@ -195,7 +195,7 @@ public class LevelManager : NetworkBehaviour
         }
         else if (Input.GetKeyDown(KeyCode.H)) // Presiona "H" para convertirte en Humano
         {
-        
+
             // Comprobar si el jugador actual está usando el prefab de zombie
             GameObject currentPlayer = GameObject.FindGameObjectWithTag("Player");
             if (currentPlayer != null && currentPlayer.name.Contains(zombiePrefab.name))
@@ -245,28 +245,28 @@ public class LevelManager : NetworkBehaviour
         ChangeToZombie(currentPlayer, true);
     }
 
-   public void ChangeToZombie(GameObject human, bool enabled)
-{
-    if (human == null) return;
-
-    NetworkObject oldNO = human.GetComponent<NetworkObject>();
-    ulong clientId = oldNO.OwnerClientId;
-    string uniqueID = human.GetComponent<PlayerController>().uniqueID;
-    Vector3 pos = human.transform.position;
-    Quaternion rot = human.transform.rotation;
-
-    Destroy(human);
-
-    GameObject zombie = Instantiate(zombiePrefab, pos, rot);
-    var zombieNO = zombie.GetComponent<NetworkObject>();
-    zombieNO.SpawnAsPlayerObject(clientId); // ¡le asigna el control al mismo jugador!
-
-    var pc = zombie.GetComponent<PlayerController>();
-    if (pc != null)
+    public void ChangeToZombie(GameObject human, bool enabled)
     {
-        pc.enabled = enabled;
-        pc.isZombie = true;
-        pc.uniqueID = uniqueID;
+        if (human == null) return;
+
+        NetworkObject oldNO = human.GetComponent<NetworkObject>();
+        ulong clientId = oldNO.OwnerClientId;
+        string uniqueID = human.GetComponent<PlayerController>().uniqueID;
+        Vector3 pos = human.transform.position;
+        Quaternion rot = human.transform.rotation;
+
+        Destroy(human);
+
+        GameObject zombie = Instantiate(zombiePrefab, pos, rot);
+        var zombieNO = zombie.GetComponent<NetworkObject>();
+        zombieNO.SpawnAsPlayerObject(clientId); // ¡le asigna el control al mismo jugador!
+
+        var pc = zombie.GetComponent<PlayerController>();
+        if (pc != null)
+        {
+            pc.enabled = enabled;
+            pc.isZombie = true;
+            pc.uniqueID = uniqueID;
 
             // UI y cámara
             if (enabled && clientId == NetworkManager.Singleton.LocalClientId)
@@ -282,10 +282,10 @@ public class LevelManager : NetworkBehaviour
             }
 
             numberOfHumans--;
-        numberOfZombies++;
-        UpdateTeamUI();
+            numberOfZombies++;
+            UpdateTeamUI();
+        }
     }
-}
 
 
     private void ChangeToHuman()
@@ -349,7 +349,7 @@ public class LevelManager : NetworkBehaviour
         }
     }
 
-   
+
 
     private void UpdateTeamUI()
     {
@@ -399,13 +399,13 @@ public class LevelManager : NetworkBehaviour
     {
         if (isGameOver) return;
 
-        
+
 
         // Implementar la lógica para el modo de juego basado en monedas
         if (timeModeText != null && playerController != null)
         {
-            timeModeText.text = $"{playerController.CoinsCollected}/{totalCoins}";
-            if (playerController.CoinsCollected >= totalCoins.Value)
+            timeModeText.text = $"{playerController.CoinsCollected}/{totalCoins.Value}";
+            if (playerController.CoinsCollected >= (int)totalCoins.Value)
             {
                 isGameOver = true;
             }
@@ -417,7 +417,7 @@ public class LevelManager : NetworkBehaviour
 
         // Actualiza la UI en cada cliente
         if (coinValueText != null)
-            coinValueText.text = $"{newValue}/{totalCoins}";
+            coinValueText.text = $"{newValue}/{totalCoins.Value}";
     }
 
     private void ShowGameOverPanel()
@@ -542,7 +542,7 @@ public class LevelManager : NetworkBehaviour
             {
                 msg = pc.isOriginalZombie ? "¡Victoria total para zombis originales!" : "¡Victoria parcial para zombis convertidos!";
             }
-            
+
             else
             {
                 msg = "Derrota.";
@@ -598,7 +598,7 @@ public class LevelManager : NetworkBehaviour
 
     public void CheckEndGameCondition()
     {
-        if ( gameMode== GameMode.Tiempo)
+        if (gameMode == GameMode.Tiempo)
         {
             if (numberOfHumans == 1)
             {
@@ -623,53 +623,134 @@ public class LevelManager : NetworkBehaviour
             if (remainingSeconds <= 0 && numberOfHumans > 0 && !isGameOver)
             {
                 isGameOver = true;
-                ShowGameOverHumansWin(); 
+                ShowGameOverHumansWin();
             }
         }
-        else if(gameMode == GameMode.Monedas)
+      
+
+
+
+    }
+
+    #region RPCs para Game Over en modo Monedas
+
+    /// <summary>
+    /// Este método lo llama DetectPlayerCollision en el cliente.
+    /// Corre en el servidor: despawnea moneda, actualiza contador y, si toca,
+    /// dispara TriggerGameOverOnAllClients().
+    /// </summary>
+    /// <param name="rpcParams"></param>
+    [ServerRpc(RequireOwnership = false)]
+    public void SubmitPickupAndCheckServerRpc(ServerRpcParams rpcParams = default)
+    {
+        Debug.Log($"[SubmitPickupAndCheckServerRpc] Servidor recibió petición del cliente {rpcParams.Receive.SenderClientId}");
+
+        // Despawnear la moneda en red
+        var no = NetworkManager.Singleton.SpawnManager.GetPlayerNetworkObject(rpcParams.Receive.SenderClientId)?.GetComponent<NetworkObject>();
+        // Como la moneda está en el mismo GameObject que DetectPlayerCollision, usamos GetComponent:
+        var monedaNO = no == null ? null : no;
+        // Pero en muchos casos "no" será null, porque no estamos en el objeto del jugador, sino en el del script DetectPlayerCollision.
+        // Así que mejor despawneamos a partir de this.GameObject:
+        var thisNO = GetComponent<NetworkObject>();
+        if (thisNO != null && thisNO.IsSpawned)
         {
-            
+            thisNO.Despawn();
+            Debug.Log("[SubmitPickupAndCheckServerRpc] Moneda despawneada en red.");
+        }
+        else
+        {
+            Debug.LogWarning("[SubmitPickupAndCheckServerRpc] El NetworkObject de la moneda es nulo o ya estaba despawneado.");
+        }
 
-            if (coinsCollected.Value >= totalCoins.Value && !isGameOver)
+        // Incrementar coinsCollected en el servidor
+        var lm = FindObjectOfType<LevelManager>();
+        if (lm != null)
+        {
+            int antes = lm.coinsCollected.Value;
+            lm.coinsCollected.Value += 1;
+            Debug.Log($"[SubmitPickupAndCheckServerRpc] coinsCollected: {antes} → {lm.coinsCollected.Value} (totalCoins = {lm.totalCoins.Value})");
+
+            // Comprobar fin de juego Monedas en el mismo hilo
+            if (!lm.isGameOver && lm.coinsCollected.Value >= lm.totalCoins.Value && lm.coinsCollected.Value > 0)
             {
-                isGameOver = true;
-                // Recorremos todos los clientes para notificarles
-                foreach (var client in NetworkManager.Singleton.ConnectedClientsList)
-                {
-                    var pc = client.PlayerObject.GetComponent<PlayerController>();
-                    bool esZombie = pc.isZombie;
-
-                    // Mensaje diferente según equipo
-                    string msg = esZombie
-                        ? "¡Derrota de los zombis!\nLos humanos han recogido todas las monedas."
-                        : "¡Victoria de los humanos!\nHas recogido todas las monedas.";
-
-                    // Enviamos el RPC a cada cliente individualmente
-                    ShowGameOverClientRpc(
-                        msg,
-                        new ClientRpcParams
-                        {
-                            Send = new ClientRpcSendParams
-                            {
-                                TargetClientIds = new[] { client.ClientId }
-                            }
-                        }
-                    );
-                }
-
+                Debug.Log("[SubmitPickupAndCheckServerRpc] Condición Monedas cumplida: Game Over → llamando a TriggerGameOverOnAllClients()");
+                lm.isGameOver = true;
+                lm.TriggerGameOverOnAllClients();
             }
-
-                
-        
+            else
+            {
+                Debug.Log("[SubmitPickupAndCheckServerRpc] Aún no toca Game Over (o ya isGameOver=true).");
+            }
+        }
+        else
+        {
+            Debug.LogError("[SubmitPickupAndCheckServerRpc] NO se encontró LevelManager para actualizar monedas.");
+        }
     }
 
+    /// <summary>
+    /// Envía a cada cliente un mensaje de Game Over (Monedas). Corre en el servidor.
+    /// </summary>
+    public void TriggerGameOverOnAllClients()
+    {
+        Debug.Log("[TriggerGameOverOnAllClients] Servidor va a enviar Game Over a cada cliente.");
 
+        foreach (var client in NetworkManager.Singleton.ConnectedClientsList)
+        {
+            var pc = client.PlayerObject.GetComponent<PlayerController>();
+            if (pc == null) continue;
 
+            bool esZombie = pc.isZombie;
+            string msg = esZombie
+                ? "¡Derrota de los zombis!\nLos humanos han recogido todas las monedas."
+                : "¡Victoria de los humanos!\nHas recogido todas las monedas.";
+
+            Debug.Log($"[TriggerGameOverOnAllClients] Enviando a Cliente {client.ClientId}: esZombie={esZombie}, msg=\"{msg}\"");
+            ShowGameOverCoinClientRpc(
+                msg,
+                new ClientRpcParams
+                {
+                    Send = new ClientRpcSendParams { TargetClientIds = new[] { client.ClientId } }
+                }
+            );
+        }
     }
 
+    /// <summary>
+    /// ClientRpc que corre en cada cliente destino. Muestra el panel de Game Over.
+    /// </summary>
+    [ClientRpc]
+    private void ShowGameOverCoinClientRpc(string mensaje, ClientRpcParams rpcParams = default)
+    {
+        Debug.Log($"[ShowGameOverClientRpc] Cliente {NetworkManager.Singleton.LocalClientId} recibió Game Over: \"{mensaje}\"");
+
+        // 1) Pausar la partida local
+        Time.timeScale = 0f;
+
+        // 2) Mostrar el panel de Game Over
+        if (gameOverPanel != null)
+        {
+            gameOverPanel.SetActive(true);
+            var textoTMP = gameOverPanel.GetComponentInChildren<TMPro.TextMeshProUGUI>();
+            if (textoTMP != null)
+            {
+                textoTMP.text = mensaje;
+            }
+            else
+            {
+                Debug.LogError("[ShowGameOverClientRpc] No se encontró TextMeshProUGUI dentro de gameOverPanel.");
+            }
+        }
+        else
+        {
+            Debug.LogError("[ShowGameOverClientRpc] gameOverPanel NO está asignado en el Inspector.");
+        }
+
+        // 3) Asegurarse de que el cursor se vea
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
+    }
+
+    #endregion
 
 }
-
-
-
-

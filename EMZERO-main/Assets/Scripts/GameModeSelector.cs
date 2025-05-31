@@ -13,7 +13,7 @@ public class GameModeSelector : NetworkBehaviour
 
     private StartGameVariables sgVariables;
     [SerializeField] private Slider coinDensitySlider;
-    [SerializeField] private TextMeshPro coinDensityLabel;
+    [SerializeField] private TextMeshProUGUI coinDensityLabel;
 
     [SerializeField] private Slider timeDensitySlider;
     [SerializeField] private TextMeshPro timeDensityLabel;
@@ -103,7 +103,7 @@ public class GameModeSelector : NetworkBehaviour
             hijo.gameObject.SetActive(true);
         }
         coinDensitySlider = sliderCoinPanel.GetComponentInChildren<Slider>();
-        coinDensityLabel = sliderCoinPanel.GetComponentInChildren<TextMeshPro>();
+        coinDensityLabel = sliderCoinPanel.GetComponentInChildren<TextMeshProUGUI>();
         if (coinDensitySlider != null)
         {
             // Inicializa el slider al valor actual
