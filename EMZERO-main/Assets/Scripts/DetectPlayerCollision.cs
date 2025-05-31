@@ -11,6 +11,11 @@ public class DetectPlayerCollision : NetworkBehaviour
         
         if (!other.TryGetComponent<PlayerController>(out var pc))
             return;
+        // Si el jugador es zombie, no recogemos la moneda
+        if (pc.isZombie)
+        {
+            return;
+        }
         AudioSource.PlayClipAtPoint(pickupSound, transform.position);
 
         var levelManager = FindObjectOfType<LevelManager>();

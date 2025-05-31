@@ -36,8 +36,7 @@ public class LevelManager : NetworkBehaviour
     [Tooltip("Selecciona el modo de juego")]
     [SerializeField] private GameMode gameMode;
 
-    [Tooltip("Tiempo de partida en minutos para el modo tiempo")]
-    [SerializeField] private int minutes = 5;
+   
 
     public List<Vector3> humanSpawnPoints = new List<Vector3>();
     public List<Vector3> zombieSpawnPoints = new List<Vector3>();
@@ -149,7 +148,7 @@ public class LevelManager : NetworkBehaviour
             }
         }
 
-        remainingSeconds = minutes * 60;
+        remainingSeconds = StartGameVariables.Instance.minutes * 60;
 
         // Obtener los puntos de aparición y el número de monedas generadas desde LevelBuilder
         if (levelBuilder != null)
@@ -405,8 +404,8 @@ public class LevelManager : NetworkBehaviour
         // Implementar la lógica para el modo de juego basado en monedas
         if (timeModeText != null && playerController != null)
         {
-            timeModeText.text = $"{playerController.CoinsCollected}/{CoinsGenerated}";
-            if (playerController.CoinsCollected >= CoinsGenerated)
+            timeModeText.text = $"{playerController.CoinsCollected}/{totalCoins}";
+            if (playerController.CoinsCollected >= totalCoins.Value)
             {
                 isGameOver = true;
             }
@@ -418,7 +417,7 @@ public class LevelManager : NetworkBehaviour
 
         // Actualiza la UI en cada cliente
         if (coinValueText != null)
-            coinValueText.text = $"{newValue}/{CoinsGenerated}";
+            coinValueText.text = $"{newValue}/{totalCoins}";
     }
 
     private void ShowGameOverPanel()
@@ -631,7 +630,7 @@ public class LevelManager : NetworkBehaviour
         {
             
 
-            if (coinsCollected.Value >= CoinsGenerated && !isGameOver)
+            if (coinsCollected.Value >= totalCoins.Value && !isGameOver)
             {
                 isGameOver = true;
                 // Recorremos todos los clientes para notificarles

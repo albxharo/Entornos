@@ -22,6 +22,7 @@ public class StartGameVariables : NetworkBehaviour
     public NetworkList<FixedString4096Bytes> playersNames;
 
     public float coinsDensity = 20f;
+    public int minutes = 5; 
 
 
     public GameObject readycanvas;
@@ -280,8 +281,7 @@ public class StartGameVariables : NetworkBehaviour
     public void SelectGameModeServerRpc(GameMode mode)
     {
         SelectedGameMode.Value = mode;
-        // No llamamos aquí directamente a IniciarPartida: 
-        // lo hará TryStartMatchIfReady si ya están todos conectados.
+        
     }
     public override void OnDestroy()
     {
